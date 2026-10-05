@@ -39,6 +39,10 @@ def serve_index():
 
 app.mount("/static", StaticFiles(directory=frontend_path), name="static")
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 # ----------------- AUTH & DB -----------------
 SECRET_KEY = os.getenv("SECRET_KEY")
 security = HTTPBearer()
