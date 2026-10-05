@@ -9,6 +9,6 @@ python-dotenv
 PyJWT
 Werkzeug
 python-multipart
-
 psycopg2-binary
 SQLAlchemy
+mangum

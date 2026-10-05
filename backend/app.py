@@ -45,13 +45,18 @@ security = HTTPBearer()
 
 def get_db():
     db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        raise ValueError("DATABASE_URL environment variable is required")
-    # Neon might need sslmode=require
-    if "?" not in db_url:
-        db_url += "?sslmode=require"
-    conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
-    return conn
+    if db_url:
+        # Neon/Postgres may need sslmode=require
+        if "?" not in db_url:
+            db_url += "?sslmode=require"
+        conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+        return conn
+    else:
+        # Use SQLite in /tmp (writable on Vercel)
+        sqlite_path = "/tmp/edunexa.db"
+        conn = sqlite3.connect(sqlite_path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
 
 try:
     with get_db() as conn:
@@ -339,10 +344,21 @@ def get_hypothesis_testing(user: dict = Depends(get_current_user)):
             "t_statistic": round(float(t_stat), 4) if not np.isnan(t_stat) else 0.0,
             "p_two": float(p_two) if not np.isnan(p_two) else 1.0,
             "p_right": float(p_greater) if not np.isnan(p_greater) else 1.0,
-            "p_left": float(p_less) if not np.isnan(p_less) else 1.0
+            "p_left": float(p_less) if not np.isnan(p_less) else 1.0,
+            "p_value": float(p_two) if not np.isnan(p_two) else 1.0,
+            "conclusion": "Reject H0" if (not np.isnan(p_two) and p_two < 0.05) else "Fail to reject H0"
         }
     else:
-        t_test_res = {"valid": False, "error_msg": "Insufficient groups or zero variance."}
+        t_test_res = {
+            "valid": False, 
+            "error_msg": "Insufficient groups or zero variance.",
+            "t_statistic": 0.0,
+            "p_two": 1.0,
+            "p_right": 1.0,
+            "p_left": 1.0,
+            "p_value": 1.0,
+            "conclusion": "Fail to reject H0"
+        }
     
     # 2. Z-Test for proportions
     high_att = df[df["attendance_percentage"] >= 80]
@@ -364,12 +380,32 @@ def get_hypothesis_testing(user: dict = Depends(get_current_user)):
                 "z_statistic": round(float(z_stat), 4),
                 "p_two": float(p_two),
                 "p_right": float(z_right),
-                "p_left": float(z_left)
+                "p_left": float(z_left),
+                "p_value": float(p_two),
+                "conclusion": "Reject H0" if p_two < 0.05 else "Fail to reject H0"
             }
         except:
-            z_test_res = {"valid": False, "error_msg": "Groups are identical or have 0 variance."}
+            z_test_res = {
+                "valid": False, 
+                "error_msg": "Groups are identical or have 0 variance.",
+                "z_statistic": 0.0,
+                "p_two": 1.0,
+                "p_right": 1.0,
+                "p_left": 1.0,
+                "p_value": 1.0,
+                "conclusion": "Fail to reject H0"
+            }
     else:
-        z_test_res = {"valid": False, "error_msg": "One or both groups are empty."}
+        z_test_res = {
+            "valid": False, 
+            "error_msg": "One or both groups are empty.",
+            "z_statistic": 0.0,
+            "p_two": 1.0,
+            "p_right": 1.0,
+            "p_left": 1.0,
+            "p_value": 1.0,
+            "conclusion": "Fail to reject H0"
+        }
         
     # 3. Chi-square
     df_copy = df.copy()
@@ -383,10 +419,17 @@ def get_hypothesis_testing(user: dict = Depends(get_current_user)):
         chi_res = {
             "valid": True,
             "chi2_statistic": round(float(chi2), 4) if not np.isnan(chi2) else 0.0,
-            "p_value": float(p_chi) if not np.isnan(p_chi) else 1.0
+            "p_value": float(p_chi) if not np.isnan(p_chi) else 1.0,
+            "conclusion": "Reject H0" if (not np.isnan(p_chi) and p_chi < 0.05) else "Fail to reject H0"
         }
     else:
-        chi_res = {"valid": False, "error_msg": "Need sufficient data in all categories (empty groups detected)."}
+        chi_res = {
+            "valid": False, 
+            "error_msg": "Need sufficient data in all categories (empty groups detected).",
+            "chi2_statistic": 0.0,
+            "p_value": 1.0,
+            "conclusion": "Fail to reject H0"
+        }
         
     # 4. ANOVA
     df_copy['study_group'] = pd.cut(df_copy['study_hours_per_day'], bins=[-1, 4, 7, 25], labels=['Low', 'Medium', 'High'])
@@ -398,10 +441,17 @@ def get_hypothesis_testing(user: dict = Depends(get_current_user)):
         anova_res = {
             "valid": True,
             "f_statistic": round(float(f_stat), 4) if not np.isnan(f_stat) else 0.0,
-            "p_value": float(p_anova) if not np.isnan(p_anova) else 1.0
+            "p_value": float(p_anova) if not np.isnan(p_anova) else 1.0,
+            "conclusion": "Reject H0" if (not np.isnan(p_anova) and p_anova < 0.05) else "Fail to reject H0"
         }
     else:
-        anova_res = {"valid": False, "error_msg": "Insufficient groups (need >= 2)."}
+        anova_res = {
+            "valid": False, 
+            "error_msg": "Insufficient groups (need >= 2).",
+            "f_statistic": 0.0,
+            "p_value": 1.0,
+            "conclusion": "Fail to reject H0"
+        }
         
     return {
         "t_test": t_test_res,

@@ -1039,25 +1039,76 @@
         }
 
         async function renderReports() {
-            const data = await preloadData();
+            showLoader();
+            let data = null;
+            try {
+                data = await preloadData();
+            } catch(e) {
+                console.error('Error preloading data for reports:', e);
+            } finally {
+                hideLoader();
+            }
+            
             if (!data || !data.raw || data.raw.length === 0) {
-                document.getElementById('app').innerHTML = renderMainLayout('<div class="p-6">No data available. Please generate or upload a dataset.</div>', 'Reports', '');
+                document.getElementById('app').innerHTML = renderMainLayout(`
+                    <div class="glass-card p-8 text-center text-text max-w-lg mx-auto mt-12">
+                        <div class="text-primary mb-4"><i class="fa-solid fa-chart-pie text-4xl"></i></div>
+                        <h2 class="text-2xl font-bold mb-2">No Report Data Available</h2>
+                        <p class="text-textMuted mb-6">EduNexa needs student habit data to generate academic reports. Please upload your CSV or generate a sample dataset.</p>
+                        <div class="flex justify-center gap-4">
+                            <button onclick="navigate('data')" class="bg-primary hover:bg-primaryHover text-white px-6 py-2 rounded font-medium transition">Open Data Manager</button>
+                            <button onclick="cachedData = null; preloadData(true).then(() => renderReports());" class="glass-card px-6 py-2 rounded font-medium transition hover:bg-surfaceHover text-text">Refresh Data</button>
+                        </div>
+                    </div>
+                `, 'Reports', 'Academic Performance & Study Habit Analysis');
                 return;
             }
             
-            const d = data.desc.stats;
-            const passCount = data.raw.filter(x => x.pass_fail === 1).length;
-            const passRate = data.raw.length > 0 ? ((passCount / data.raw.length) * 100).toFixed(1) : 0;
-            const p = data.prob;
-            const h = data.hyp;
-            const c = data.corr;
+            const d = data.desc?.stats || {
+                marks: { mean: 0, median: 0, std_dev: 0, variance: 0, range: 0 },
+                study_hours_per_day: { mean: 0, median: 0, std_dev: 0, variance: 0, range: 0 },
+                attendance_percentage: { mean: 0, median: 0, std_dev: 0, variance: 0, range: 0 }
+            };
+            const passCount = (data.raw || []).filter(x => x.pass_fail === 1).length;
+            const passRate = data.raw && data.raw.length > 0 ? ((passCount / data.raw.length) * 100).toFixed(1) : 0;
+            const p = data.prob || { p_marks_gt_75: 0, p_att_gt_90: 0, p_marks_given_att: 0, p_att_given_marks: 0 };
+            const h = data.hyp || {};
+            const c = data.corr || { pearson: {}, spearman: {} };
+            const r = data.reg || { simple_linear: { r_squared: 0 }, multiple_linear: {} };
+
+            const getCorr = (v1, v2) => {
+                const val = c.pearson?.[v1]?.[v2];
+                return (typeof val === 'number') ? val.toFixed(2) : '0.00';
+            };
+
+            const tTest = h.t_test || {};
+            const tPVal = typeof (tTest.p_value ?? tTest.p_two) === 'number' ? (tTest.p_value ?? tTest.p_two) : 1.0;
+            const tValid = tTest.valid === true;
+            const tConclusion = tTest.conclusion || (tPVal < 0.05 ? 'Reject H0' : 'Fail to reject H0');
+            const tPDisplay = tValid ? (tPVal < 0.0001 ? '< 0.0001' : Number(tPVal).toFixed(4)) : (tTest.error_msg ? `N/A (${tTest.error_msg})` : 'N/A');
+
+            const zTest = h.z_test_proportions || {};
+            const zPVal = typeof (zTest.p_value ?? zTest.p_two) === 'number' ? (zTest.p_value ?? zTest.p_two) : 1.0;
+            const zValid = zTest.valid === true;
+            const zConclusion = zTest.conclusion || (zPVal < 0.05 ? 'Reject H0' : 'Fail to reject H0');
+            const zPDisplay = zValid ? (zPVal < 0.0001 ? '< 0.0001' : Number(zPVal).toFixed(4)) : (zTest.error_msg ? `N/A (${zTest.error_msg})` : 'N/A');
+
+            const pMarks = (typeof p.p_marks_gt_75 === 'number' ? p.p_marks_gt_75 * 100 : 0).toFixed(1);
+            const pAtt = (typeof p.p_att_gt_90 === 'number' ? p.p_att_gt_90 * 100 : 0).toFixed(1);
+            const pGiven = (typeof p.p_marks_given_att === 'number' ? p.p_marks_given_att * 100 : 0).toFixed(1);
+            const rSquared = (typeof r.simple_linear?.r_squared === 'number' ? r.simple_linear.r_squared : 0).toFixed(2);
 
             const html = `
             <div class="bg-white text-black p-8 md:p-12 rounded-lg shadow-sm print:shadow-none print:p-0 print:m-0 print:block relative" style="color: black !important; background: white !important;">
                 
-                <button onclick="window.print()" class="absolute top-8 right-8 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-6 rounded-lg transition shadow-md no-print flex items-center gap-2">
-                    <i class="fa-solid fa-download"></i> Download PDF
-                </button>
+                <div class="absolute top-8 right-8 flex gap-3 no-print">
+                    <button onclick="downloadReportSummaryCSV()" class="bg-slate-700 hover:bg-slate-800 text-white font-medium py-2 px-4 rounded-lg transition shadow-md flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-file-csv"></i> Export CSV
+                    </button>
+                    <button onclick="window.print()" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-5 rounded-lg transition shadow-md flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-file-pdf"></i> Download PDF
+                    </button>
+                </div>
 
                 <div class="text-center border-b border-gray-300 pb-6 mb-8 mt-4">
                     <div class="w-16 h-16 mx-auto monochrome-logo text-black">${nexaIconSVG}</div>
@@ -1068,71 +1119,95 @@
 
                 <!-- 1. KPIs -->
                 <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">1. Performance Overview</h2>
-                <div class="grid grid-cols-4 gap-4 mb-8 text-center">
-                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Avg Marks</p><h3 class="text-2xl font-bold text-black">${d.marks.mean}</h3></div>
-                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Study (hrs/day)</p><h3 class="text-2xl font-bold text-black">${d.study_hours_per_day.mean}</h3></div>
-                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Attendance</p><h3 class="text-2xl font-bold text-black">${d.attendance_percentage.mean}%</h3></div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-center">
+                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Avg Marks</p><h3 class="text-2xl font-bold text-black">${d.marks?.mean ?? 0}</h3></div>
+                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Study (hrs/day)</p><h3 class="text-2xl font-bold text-black">${d.study_hours_per_day?.mean ?? 0}</h3></div>
+                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Attendance</p><h3 class="text-2xl font-bold text-black">${d.attendance_percentage?.mean ?? 0}%</h3></div>
                     <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Pass Rate</p><h3 class="text-2xl font-bold text-black">${passRate}%</h3></div>
                 </div>
 
                 <!-- 2. Descriptive Stats Table -->
                 <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">2. Descriptive Statistics</h2>
-                <table class="w-full text-left text-sm mb-8 border border-gray-300">
-                    <thead class="bg-gray-100 text-black">
-                        <tr><th class="p-2 border-b border-gray-300">Variable</th><th class="p-2 border-b border-gray-300">Mean</th><th class="p-2 border-b border-gray-300">Median</th><th class="p-2 border-b border-gray-300">Std Dev</th><th class="p-2 border-b border-gray-300">Variance</th><th class="p-2 border-b border-gray-300">Range</th></tr>
-                    </thead>
-                    <tbody class="text-black">
-                        <tr><td class="p-2 border-b border-gray-200 font-semibold">Marks</td><td class="p-2 border-b border-gray-200">${d.marks.mean}</td><td class="p-2 border-b border-gray-200">${d.marks.median}</td><td class="p-2 border-b border-gray-200">${d.marks.std_dev}</td><td class="p-2 border-b border-gray-200">${d.marks.variance}</td><td class="p-2 border-b border-gray-200">${d.marks.range}</td></tr>
-                        <tr><td class="p-2 border-b border-gray-200 font-semibold">Study Hours</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.mean}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.median}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.std_dev}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.variance}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.range}</td></tr>
-                        <tr><td class="p-2 font-semibold">Attendance %</td><td class="p-2">${d.attendance_percentage.mean}</td><td class="p-2">${d.attendance_percentage.median}</td><td class="p-2">${d.attendance_percentage.std_dev}</td><td class="p-2">${d.attendance_percentage.variance}</td><td class="p-2">${d.attendance_percentage.range}</td></tr>
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto mb-8">
+                    <table class="w-full text-left text-sm border border-gray-300">
+                        <thead class="bg-gray-100 text-black">
+                            <tr><th class="p-2 border-b border-gray-300">Variable</th><th class="p-2 border-b border-gray-300">Mean</th><th class="p-2 border-b border-gray-300">Median</th><th class="p-2 border-b border-gray-300">Std Dev</th><th class="p-2 border-b border-gray-300">Variance</th><th class="p-2 border-b border-gray-300">Range</th></tr>
+                        </thead>
+                        <tbody class="text-black">
+                            <tr><td class="p-2 border-b border-gray-200 font-semibold">Marks</td><td class="p-2 border-b border-gray-200">${d.marks?.mean ?? 0}</td><td class="p-2 border-b border-gray-200">${d.marks?.median ?? 0}</td><td class="p-2 border-b border-gray-200">${d.marks?.std_dev ?? 0}</td><td class="p-2 border-b border-gray-200">${d.marks?.variance ?? 0}</td><td class="p-2 border-b border-gray-200">${d.marks?.range ?? 0}</td></tr>
+                            <tr><td class="p-2 border-b border-gray-200 font-semibold">Study Hours</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day?.mean ?? 0}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day?.median ?? 0}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day?.std_dev ?? 0}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day?.variance ?? 0}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day?.range ?? 0}</td></tr>
+                            <tr><td class="p-2 font-semibold">Attendance %</td><td class="p-2">${d.attendance_percentage?.mean ?? 0}</td><td class="p-2">${d.attendance_percentage?.median ?? 0}</td><td class="p-2">${d.attendance_percentage?.std_dev ?? 0}</td><td class="p-2">${d.attendance_percentage?.variance ?? 0}</td><td class="p-2">${d.attendance_percentage?.range ?? 0}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <!-- 3. Correlation -->
                 <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">3. Correlation Analysis (Pearson)</h2>
-                <p class="text-sm mb-4 text-gray-700"><strong>Linear Regression R² (Study vs Marks):</strong> ${data.reg.simple_linear.r_squared.toFixed(2)}</p>
-                <table class="w-full text-center text-sm mb-8 border border-gray-300">
-                    <thead class="bg-gray-100 text-black">
-                        <tr><th class="p-2 border-b border-gray-300"></th><th class="p-2 border-b border-gray-300">Study Hrs</th><th class="p-2 border-b border-gray-300">Attendance</th><th class="p-2 border-b border-gray-300">Sleep</th><th class="p-2 border-b border-gray-300">Marks</th></tr>
-                    </thead>
-                    <tbody class="text-black">
-                        <tr><td class="p-2 border-b border-gray-200 font-semibold text-left">Study Hrs</td><td class="p-2 border-b border-gray-200">${c.pearson.study_hours_per_day.study_hours_per_day.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.study_hours_per_day.attendance_percentage.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.study_hours_per_day.sleep_hours.toFixed(2)}</td><td class="p-2 border-b border-gray-200 font-bold">${c.pearson.study_hours_per_day.marks.toFixed(2)}</td></tr>
-                        <tr><td class="p-2 border-b border-gray-200 font-semibold text-left">Attendance</td><td class="p-2 border-b border-gray-200">${c.pearson.attendance_percentage.study_hours_per_day.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.attendance_percentage.attendance_percentage.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.attendance_percentage.sleep_hours.toFixed(2)}</td><td class="p-2 border-b border-gray-200 font-bold">${c.pearson.attendance_percentage.marks.toFixed(2)}</td></tr>
-                        <tr><td class="p-2 border-b border-gray-200 font-semibold text-left">Sleep</td><td class="p-2 border-b border-gray-200">${c.pearson.sleep_hours.study_hours_per_day.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.sleep_hours.attendance_percentage.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.sleep_hours.sleep_hours.toFixed(2)}</td><td class="p-2 border-b border-gray-200 font-bold">${c.pearson.sleep_hours.marks.toFixed(2)}</td></tr>
-                        <tr><td class="p-2 font-semibold text-left">Marks</td><td class="p-2 font-bold">${c.pearson.marks.study_hours_per_day.toFixed(2)}</td><td class="p-2 font-bold">${c.pearson.marks.attendance_percentage.toFixed(2)}</td><td class="p-2 font-bold">${c.pearson.marks.sleep_hours.toFixed(2)}</td><td class="p-2 font-bold">${c.pearson.marks.marks.toFixed(2)}</td></tr>
-                    </tbody>
-                </table>
+                <p class="text-sm mb-4 text-gray-700"><strong>Linear Regression R² (Study vs Marks):</strong> ${rSquared}</p>
+                <div class="overflow-x-auto mb-8">
+                    <table class="w-full text-center text-sm border border-gray-300">
+                        <thead class="bg-gray-100 text-black">
+                            <tr><th class="p-2 border-b border-gray-300"></th><th class="p-2 border-b border-gray-300">Study Hrs</th><th class="p-2 border-b border-gray-300">Attendance</th><th class="p-2 border-b border-gray-300">Sleep</th><th class="p-2 border-b border-gray-300">Marks</th></tr>
+                        </thead>
+                        <tbody class="text-black">
+                            <tr><td class="p-2 border-b border-gray-200 font-semibold text-left">Study Hrs</td><td class="p-2 border-b border-gray-200">${getCorr('study_hours_per_day', 'study_hours_per_day')}</td><td class="p-2 border-b border-gray-200">${getCorr('study_hours_per_day', 'attendance_percentage')}</td><td class="p-2 border-b border-gray-200">${getCorr('study_hours_per_day', 'sleep_hours')}</td><td class="p-2 border-b border-gray-200 font-bold">${getCorr('study_hours_per_day', 'marks')}</td></tr>
+                            <tr><td class="p-2 border-b border-gray-200 font-semibold text-left">Attendance</td><td class="p-2 border-b border-gray-200">${getCorr('attendance_percentage', 'study_hours_per_day')}</td><td class="p-2 border-b border-gray-200">${getCorr('attendance_percentage', 'attendance_percentage')}</td><td class="p-2 border-b border-gray-200">${getCorr('attendance_percentage', 'sleep_hours')}</td><td class="p-2 border-b border-gray-200 font-bold">${getCorr('attendance_percentage', 'marks')}</td></tr>
+                            <tr><td class="p-2 border-b border-gray-200 font-semibold text-left">Sleep</td><td class="p-2 border-b border-gray-200">${getCorr('sleep_hours', 'study_hours_per_day')}</td><td class="p-2 border-b border-gray-200">${getCorr('sleep_hours', 'attendance_percentage')}</td><td class="p-2 border-b border-gray-200">${getCorr('sleep_hours', 'sleep_hours')}</td><td class="p-2 border-b border-gray-200 font-bold">${getCorr('sleep_hours', 'marks')}</td></tr>
+                            <tr><td class="p-2 font-semibold text-left">Marks</td><td class="p-2 font-bold">${getCorr('marks', 'study_hours_per_day')}</td><td class="p-2 font-bold">${getCorr('marks', 'attendance_percentage')}</td><td class="p-2 font-bold">${getCorr('marks', 'sleep_hours')}</td><td class="p-2 font-bold">${getCorr('marks', 'marks')}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <!-- 4. Hypothesis & Probabilities -->
-                <div class="grid grid-cols-2 gap-8 mb-8" style="page-break-inside: avoid;">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8" style="page-break-inside: avoid;">
                     <div>
                         <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">4. Hypothesis Testing</h2>
                         <ul class="text-sm space-y-4 text-black">
                             <li>
                                 <strong>T-Test (Study Hours > 5)</strong><br>
-                                Conclusion: <span class="${h.t_test.p_value < 0.05 ? 'text-green-600' : 'text-red-600'} font-bold">${h.t_test.conclusion}</span><br>
-                                P-Value: ${h.t_test.p_value.toFixed(4)}
+                                Conclusion: <span class="${tPVal < 0.05 ? 'text-green-600' : 'text-red-600'} font-bold">${tConclusion}</span><br>
+                                P-Value: ${tPDisplay}
                             </li>
                             <li>
                                 <strong>Z-Test (Attendance > 80)</strong><br>
-                                Conclusion: <span class="${h.z_test_proportions.p_value < 0.05 ? 'text-green-600' : 'text-red-600'} font-bold">${h.z_test_proportions.conclusion}</span><br>
-                                P-Value: ${h.z_test_proportions.p_value.toFixed(4)}
+                                Conclusion: <span class="${zPVal < 0.05 ? 'text-green-600' : 'text-red-600'} font-bold">${zConclusion}</span><br>
+                                P-Value: ${zPDisplay}
                             </li>
                         </ul>
                     </div>
                     <div>
                         <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">5. Key Probabilities</h2>
                         <ul class="text-sm space-y-4 text-black">
-                            <li><strong>Baseline Pass Probability (>75 marks):</strong> ${(p.p_marks_gt_75*100).toFixed(1)}%</li>
-                            <li><strong>High Attendance Probability (>90%):</strong> ${(p.p_att_gt_90*100).toFixed(1)}%</li>
-                            <li><strong>P(Marks > 75 | Attendance > 90):</strong> ${(p.p_marks_given_att*100).toFixed(1)}%</li>
+                            <li><strong>Baseline Pass Probability (>75 marks):</strong> ${pMarks}%</li>
+                            <li><strong>High Attendance Probability (>90%):</strong> ${pAtt}%</li>
+                            <li><strong>P(Marks > 75 | Attendance > 90):</strong> ${pGiven}%</li>
                         </ul>
                     </div>
                 </div>
                 
             </div>
             `;
-            document.getElementById('app').innerHTML = renderMainLayout(html, 'Reports', 'Generate and print statistical reports.');
+            document.getElementById('app').innerHTML = renderMainLayout(html, 'Reports', 'Generate, export, and print statistical reports.');
+        }
+
+        function downloadReportSummaryCSV() {
+            if (!cachedData || !cachedData.raw) { alert('No data available to export.'); return; }
+            const d = cachedData.desc?.stats;
+            let csv = "EduNexa Academic Report Summary\n";
+            csv += `Generated On,${new Date().toISOString()}\n`;
+            csv += `Total Records,${cachedData.raw.length}\n\n`;
+            csv += "Metric,Marks,Study Hours,Attendance Percentage\n";
+            csv += `Mean,${d?.marks?.mean ?? 0},${d?.study_hours_per_day?.mean ?? 0},${d?.attendance_percentage?.mean ?? 0}\n`;
+            csv += `Median,${d?.marks?.median ?? 0},${d?.study_hours_per_day?.median ?? 0},${d?.attendance_percentage?.median ?? 0}\n`;
+            csv += `Std Dev,${d?.marks?.std_dev ?? 0},${d?.study_hours_per_day?.std_dev ?? 0},${d?.attendance_percentage?.std_dev ?? 0}\n`;
+            csv += `Variance,${d?.marks?.variance ?? 0},${d?.study_hours_per_day?.variance ?? 0},${d?.attendance_percentage?.variance ?? 0}\n`;
+            csv += `Range,${d?.marks?.range ?? 0},${d?.study_hours_per_day?.range ?? 0},${d?.attendance_percentage?.range ?? 0}\n\n`;
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `edunexa_report_summary_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
         }
 
         // --- Helpers ---
@@ -1240,12 +1315,13 @@
                 if (err.message === 'Unauthorized') {
                     executeLogout(null);
                 } else {
+                    const errDetail = err?.message && err.message !== 'Failed to fetch' ? `Details: ${err.message}` : 'EduNexa could not reach the server or failed to load data. The backend service may be down.';
                     document.getElementById('app').innerHTML = renderMainLayout(`
                         <div class="glass-card p-8 text-center text-text max-w-lg mx-auto mt-12">
                             <div class="text-red-500 mb-4"><i class="fa-solid fa-triangle-exclamation text-4xl"></i></div>
                             <h2 class="text-2xl font-bold mb-2">Connection Error</h2>
-                            <p class="text-textMuted mb-6">EduNexa could not reach the server or failed to load data. The backend service may be down.</p>
-                            <button onclick="window.location.reload()" class="bg-primary hover:bg-primaryHover text-white px-6 py-2 rounded font-medium transition">Retry</button>
+                            <p class="text-textMuted mb-6">${errDetail}</p>
+                            <button onclick="cachedData = null; router();" class="bg-primary hover:bg-primaryHover text-white px-6 py-2 rounded font-medium transition">Retry</button>
                         </div>
                     `, 'System Error', 'Service Unavailable');
                 }

@@ -1,4 +1,4 @@
-﻿import pandas as pd
+import pandas as pd
 import numpy as np
 import scipy.stats as stats
 import statsmodels.api as sm
@@ -48,7 +48,9 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 security = HTTPBearer()
 
 def get_db():
-    conn = sqlite3.connect("edunexa.db", check_same_thread=False)
+    # Use SQLite database stored in Vercel's writable /tmp directory
+    sqlite_path = "/tmp/edunexa.db"
+    conn = sqlite3.connect(sqlite_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 

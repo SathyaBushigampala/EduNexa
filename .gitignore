@@ -56,3 +56,6 @@ backend/edunexa.db
 # Temp files
 *.pdf
 dataset_demo_gmail_com.csv
+
+.vercel
+.env*
