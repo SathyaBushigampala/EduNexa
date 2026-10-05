@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduNexa</title>
+    <meta name="description" content="EduNexa - Connect your habits. Predict your success.">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="apple-touch-icon" href="/static/favicon.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
+                    colors: {
+                        bg: 'var(--color-bg)',
+                        surface: 'var(--color-surface)',
+                        surfaceHover: 'var(--color-surface-hover)',
+                        border: 'var(--color-border)',
+                        text: 'var(--color-text)',
+                        textMuted: 'var(--color-text-muted)',
+                        primary: 'var(--color-primary)',
+                        primaryHover: 'var(--color-primary-hover)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root[data-theme="dark"] {
+            --color-bg: #0f172a;
+            --color-surface: rgba(30, 41, 59, 0.7);
+            --color-surface-hover: rgba(51, 65, 85, 0.8);
+            --color-border: rgba(71, 85, 105, 0.5);
+            --color-text: #f8fafc;
+            --color-text-muted: #94a3b8;
+            --color-primary: #3b82f6;
+            --color-primary-hover: #2563eb;
+            --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.3);
+            --chart-grid: rgba(255, 255, 255, 0.1);
+            --heatmap-0: transparent;
+            --input-bg: #1e293b;
+            --brand-text: #f8fafc;
+        }
+
+        :root[data-theme="light"] {
+            --color-bg: #f1f5f9;
+            --color-surface: rgba(255, 255, 255, 0.9);
+            --color-surface-hover: rgba(241, 245, 249, 1);
+            --color-border: rgba(203, 213, 225, 0.8);
+            --color-text: #0f172a;
+            --color-text-muted: #475569;
+            --color-primary: #3b82f6;
+            --color-primary-hover: #2563eb;
+            --shadow-glass: 0 8px 32px rgba(148, 163, 184, 0.2);
+            --chart-grid: rgba(0, 0, 0, 0.05);
+            --heatmap-0: transparent;
+            --input-bg: #ffffff;
+            --brand-text: #0f172a;
+        }
+
+        html { scroll-behavior: smooth; }
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: var(--color-bg); 
+            color: var(--color-text);
+            transition: background-color 0.3s, color 0.3s; 
+            overflow-x: hidden;
+        }
+        
+        .glass-card {
+            background: var(--color-surface);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-glass);
+            border-radius: 1rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s, border-color 0.3s;
+        }
+        
+        .fade-in { opacity: 0; transform: translateY(10px); animation: fadeIn 0.4s forwards; }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+        /* Loader */
+        #loader {
+            position: fixed; inset: 0; background: var(--color-bg); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        .pulse-anim { animation: pulse 2s infinite ease-in-out; }
+        @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(0.95); opacity: 0.8; } }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--color-primary); cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--color-border); border-radius: 2px; }
+        input:not([type=range]), select { background: var(--input-bg); border: 1px solid var(--color-border); color: var(--color-text); }
+        table th, table td { border-bottom: 1px solid var(--color-border); }
+        tr:hover { background-color: var(--color-surface-hover); }
+
+        .nav-item { padding: 0.75rem 1rem; border-radius: 0.5rem; transition: all 0.2s; display: flex; align-items: center; gap: 0.75rem; color: var(--color-text-muted); }
+        .nav-item:hover { background: var(--color-surface-hover); color: var(--color-text); }
+        .nav-item.active { background: rgba(59, 130, 246, 0.1); color: var(--color-primary); font-weight: 500; }
+        
+        @media print {
+            body { background: white !important; color: black !important; }
+            .no-print, #sidebar, #topbar { display: none !important; }
+            #main-content { margin-left: 0 !important; margin-top: 0 !important; }
+            .glass-card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; background: white !important; color: black !important; }
+            .print-color-adjust { color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .monochrome-logo polygon, .monochrome-logo line, .monochrome-logo circle { fill: #000 !important; stroke: #000 !important; filter: none !important; }
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .nexa-logo-anim {
+                animation: nexaFloatTilt 4s ease-in-out infinite;
+                transform-origin: center;
+            }
+            @keyframes nexaFloatTilt {
+                0%, 100% { transform: translateY(0) rotate(0deg); }
+                50% { transform: translateY(-8px) rotate(3deg); }
+            }
+
+            .nexa-circle-anim-1 {
+                animation: nexaCircleFloat1 3.5s ease-in-out infinite;
+                transform-origin: 25px 80px;
+            }
+            @keyframes nexaCircleFloat1 {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.2); }
+            }
+
+            .nexa-circle-anim-2 {
+                animation: nexaCircleFloat2 4s ease-in-out infinite 1s;
+                transform-origin: 75px 35px;
+            }
+            @keyframes nexaCircleFloat2 {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.2); }
+            }
+
+            .nexa-glow-pulse {
+                animation: nexaGlowPulse 4s ease-in-out infinite;
+            }
+            @keyframes nexaGlowPulse {
+                0%, 100% { filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.2)); }
+                50% { filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.6)); }
+            }
+
+            .nexa-text-glow {
+                animation: nexaTextPulse 4s ease-in-out infinite;
+                display: inline-block;
+            }
+            @keyframes nexaTextPulse {
+                0%, 100% { filter: drop-shadow(0 0 1px rgba(59, 130, 246, 0.1)); }
+                50% { filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.3)); }
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loader">
+        <div class="pulse-anim flex flex-col items-center">
+            <svg viewBox="0 0 100 100" width="80" height="80">
+                <defs>
+                    <linearGradient id="nexaGradLoad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#3B82F6"/>
+                        <stop offset="50%" stop-color="#14B8A6"/>
+                        <stop offset="100%" stop-color="#8B5CF6"/>
+                    </linearGradient>
+                    <filter id="glowLoad">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                </defs>
+                <polygon points="50,15 85,30 50,45 15,30" fill="url(#nexaGradLoad)" filter="url(#glowLoad)"/>
+                <line x1="25" y1="35" x2="25" y2="80" stroke="url(#nexaGradLoad)" stroke-width="8" stroke-linecap="round"/>
+                <circle cx="25" cy="80" r="6" fill="#14B8A6"/>
+                <line x1="25" y1="40" x2="75" y2="75" stroke="url(#nexaGradLoad)" stroke-width="8" stroke-linecap="round"/>
+                <line x1="75" y1="35" x2="75" y2="80" stroke="url(#nexaGradLoad)" stroke-width="8" stroke-linecap="round"/>
+                <circle cx="75" cy="35" r="6" fill="#8B5CF6"/>
+            </svg>
+            <div class="mt-4 font-bold text-2xl text-text">Edu<span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-teal-400 to-violet-500">Nexa</span></div>
+        </div>
+    </div>
+
+    <div id="app"></div>
+
+    <script>
+        const API_BASE = '/api';
+        let charts = {};
+        let cachedData = null;
+        
+        const nexaIconSVG = `
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="w-full h-full monochrome-logo nexa-logo-anim nexa-glow-pulse">
+                <defs>
+                    <linearGradient id="nexaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#3B82F6"/><stop offset="50%" stop-color="#14B8A6"/><stop offset="100%" stop-color="#8B5CF6"/>
+                    </linearGradient>
+                    <filter id="glowNexa">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                </defs>
+                <polygon points="50,15 85,30 50,45 15,30" fill="url(#nexaGrad)" filter="url(#glowNexa)"/>
+                <line x1="25" y1="35" x2="25" y2="80" stroke="url(#nexaGrad)" stroke-width="8" stroke-linecap="round"/>
+                <circle cx="25" cy="80" r="6" fill="#14B8A6" class="nexa-circle-anim-1"/>
+                <line x1="25" y1="40" x2="75" y2="75" stroke="url(#nexaGrad)" stroke-width="8" stroke-linecap="round"/>
+                <line x1="75" y1="35" x2="75" y2="80" stroke="url(#nexaGrad)" stroke-width="8" stroke-linecap="round"/>
+                <circle cx="75" cy="35" r="6" fill="#8B5CF6" class="nexa-circle-anim-2"/>
+            </svg>
+        `;
+        const nexaWordmark = `<span class="nexa-text-glow"><span style="color: var(--brand-text)">Edu</span><span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-teal-400 to-violet-500">Nexa</span></span>`;
+
+        function hideLoader() { document.getElementById('loader').style.opacity = '0'; setTimeout(()=>document.getElementById('loader').style.visibility='hidden', 500); }
+        function showLoader() { document.getElementById('loader').style.visibility = 'visible'; document.getElementById('loader').style.opacity = '1'; }
+
+        function getToken() { return localStorage.getItem('edunexa_token'); }
+        function getUser() { return JSON.parse(localStorage.getItem('edunexa_user') || '{}'); }
+        
+        async function fetchAuth(url, options = {}) {
+            const token = getToken();
+            const headers = { ...options.headers };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            if (!options.body || typeof options.body === 'string') headers['Content-Type'] = 'application/json';
+            const res = await fetch(API_BASE + url, { ...options, headers });
+            if (res.status === 401) { executeLogout(null); throw new Error('Unauthorized'); }
+            return res;
+        }
+
+        function confirmLogout() {
+            const user = getUser();
+            document.getElementById('logout-user-info').innerText = `Signed in as ${user.name || user.email}`;
+            const modal = document.getElementById('logout-modal');
+            const backdrop = document.getElementById('logout-backdrop');
+            const content = document.getElementById('logout-content');
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            
+            requestAnimationFrame(() => {
+                backdrop.classList.remove('opacity-0');
+                content.classList.remove('scale-95', 'opacity-0');
+            });
+            
+            document.addEventListener('keydown', handleModalKeydown);
+            document.getElementById('logout-cancel').focus();
+        }
+
+        function hideLogoutModal() {
+            const modal = document.getElementById('logout-modal');
+            const backdrop = document.getElementById('logout-backdrop');
+            const content = document.getElementById('logout-content');
+            
+            backdrop.classList.add('opacity-0');
+            content.classList.add('scale-95', 'opacity-0');
+            document.removeEventListener('keydown', handleModalKeydown);
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = '';
+            }, 200);
+        }
+
+        function handleModalKeydown(e) {
+            if (e.key === 'Escape') hideLogoutModal();
+            if (e.key === 'Tab') {
+                const focusable = document.getElementById('logout-content').querySelectorAll('button');
+                if(focusable.length === 0) return;
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault(); last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault(); first.focus();
+                }
+            }
+        }
+
+        async function executeLogout(btn) {
+            if(btn) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Logging out...';
+                btn.disabled = true;
+            }
+            try {
+                const token = getToken();
+                if(token) await fetch(API_BASE + '/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            } catch(e) {}
+            
+            localStorage.removeItem('edunexa_token'); 
+            localStorage.removeItem('edunexa_user'); 
+            cachedData = null; 
+            
+            if(btn) hideLogoutModal();
+            navigate('login');
+            
+            if(btn) {
+                setTimeout(() => {
+                    showToast("You have been logged out successfully.");
+                }, 100);
+            }
+        }
+
+        function showToast(msg) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'glass-card px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 transform translate-y-10 opacity-0 transition-all text-sm font-medium border-l-4 border-green-500 text-text';
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-green-500"></i> ${msg}`;
+            container.appendChild(toast);
+            
+            requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        async function preloadData(force = false) {
+            if (!cachedData || force) {
+                const [dataRes, descRes, probRes, hypRes, corrRes, regRes] = await Promise.all([
+                    fetchAuth('/data').then(r => r.json()),
+                    fetchAuth('/descriptive').then(r => r.json()),
+                    fetchAuth('/probability').then(r => r.json()),
+                    fetchAuth('/hypothesis-testing').then(r => r.json()),
+                    fetchAuth('/correlation').then(r => r.json()),
+                    fetchAuth('/regression').then(r => r.json())
+                ]);
+                cachedData = { raw: dataRes.data, desc: descRes, prob: probRes, hyp: hypRes, corr: corrRes, reg: regRes };
+            }
+            return cachedData;
+        }
+
+        function renderAuthLayout(content) {
+            return `
+            <div class="flex min-h-screen bg-bg">
+                <div class="hidden lg:flex lg:w-1/2 items-center justify-center p-12 relative overflow-hidden" style="background: var(--color-bg)">
+                    <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(var(--color-text) 1px, transparent 1px); background-size: 20px 20px;"></div>
+                    <div class="z-10 text-center">
+                        <div class="w-40 h-40 mx-auto mb-6">${nexaIconSVG}</div>
+                        <h1 class="text-5xl font-bold mb-4 tracking-tight font-sans">${nexaWordmark}</h1>
+                        <p class="text-textMuted text-lg font-medium">Connect your habits. Predict your success.</p>
+                    </div>
+                </div>
+                <div class="w-full lg:w-1/2 flex items-center justify-center p-8 border-l border-border bg-surface">
+                    <div class="w-full max-w-md p-8 fade-in">
+                        ${content}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderMainLayout(content, title, desc) {
+            const user = getUser();
+            return `
+            <div class="flex min-h-screen bg-bg">
+                <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-surface border-r border-border z-40 transform -translate-x-full md:translate-x-0 transition-transform no-print flex flex-col">
+                    <div class="p-6 flex items-center gap-3">
+                        <div class="w-8 h-8">${nexaIconSVG}</div>
+                        <span class="font-bold text-xl tracking-tight">${nexaWordmark}</span>
+                    </div>
+                    <nav class="flex-1 px-4 space-y-2 mt-4 overflow-y-auto">
+                        <a href="#dashboard" class="nav-item ${location.hash==='#dashboard'?'active':''}"><i class="fa-solid fa-house w-5"></i> Dashboard</a>
+                        <a href="#data" class="nav-item ${location.hash==='#data'?'active':''}"><i class="fa-solid fa-database w-5"></i> Data Manager</a>
+                        <a href="#habits" class="nav-item ${location.hash==='#habits'?'active':''}"><i class="fa-solid fa-brain w-5"></i> Study Habits</a>
+                        <a href="#probabilities" class="nav-item ${location.hash==='#probabilities'?'active':''}"><i class="fa-solid fa-dice w-5"></i> Probabilities</a>
+                        <a href="#hypothesis" class="nav-item ${location.hash==='#hypothesis'?'active':''}"><i class="fa-solid fa-scale-balanced w-5"></i> Hypothesis Tests</a>
+                        <a href="#predictor" class="nav-item ${location.hash==='#predictor'?'active':''}"><i class="fa-solid fa-wand-magic-sparkles w-5"></i> Predictor</a>
+                        <a href="#reports" class="nav-item ${location.hash==='#reports'?'active':''}"><i class="fa-solid fa-download w-5"></i> Reports</a>
+                    </nav>
+                    <div class="p-4 border-t border-border text-xs text-textMuted text-center">
+                        &copy; 2026 EduNexa. All rights reserved.
+                    </div>
+                </aside>
+                
+                <div id="main-content" class="flex-1 md:ml-64 flex flex-col min-h-screen w-full">
+                    <header id="topbar" class="h-16 border-b border-border glass-card rounded-none flex items-center justify-between px-6 sticky top-0 z-30 no-print">
+                        <div class="flex items-center gap-4">
+                            <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="md:hidden text-textMuted hover:text-text">
+                                <i class="fa-solid fa-bars text-xl"></i>
+                            </button>
+                            <h2 class="font-semibold text-lg text-text">${title}</h2>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <button onclick="toggleTheme()" class="text-textMuted hover:text-text transition">
+                                <i class="fa-solid ${document.documentElement.dataset.theme === 'dark' ? 'fa-moon' : 'fa-sun text-yellow-500'} text-lg" id="theme-icon"></i>
+                            </button>
+                            <div class="relative group cursor-pointer">
+                                <div class="flex items-center gap-2 bg-surface rounded-full px-3 py-1.5 border border-border">
+                                    <div class="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">${user.name ? user.name[0].toUpperCase() : 'U'}</div>
+                                    <span class="text-sm font-medium hidden sm:block text-text">${user.name}</span>
+                                    <i class="fa-solid fa-chevron-down text-xs text-textMuted"></i>
+                                </div>
+                                <div class="absolute right-0 mt-2 w-48 glass-card rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                                    <div class="p-4 border-b border-border text-text">
+                                        <p class="font-medium text-sm">${user.name}</p>
+                                        <p class="text-xs text-textMuted truncate">${user.email}</p>
+                                    </div>
+                                    <button onclick="confirmLogout()" class="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-surfaceHover transition flex items-center gap-2 rounded-b-lg">
+                                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+                    <main class="p-6 md:p-8 flex-1 fade-in">
+                        ${desc ? `<p class="text-textMuted mb-8 no-print">${desc}</p>` : ''}
+                        ${content}
+                    </main>
+                </div>
+            </div>`;
+        }
+
+        async function renderLogin() {
+            const html = `
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold mb-2 text-text">Welcome Back</h2>
+                    <p class="text-textMuted text-sm">Sign in to your EduNexa account</p>
+                </div>
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm mb-1 text-text">Email</label>
+                        <input type="email" id="l-email" required class="w-full rounded-lg px-4 py-2 outline-none focus:border-primary">
+                        <p id="l-email-error" class="text-red-500 text-sm hidden mt-1"></p>
+                    </div>
+                    <div class="relative">
+                        <label class="block text-sm mb-1 text-text">Password</label>
+                        <input type="password" id="l-password" required class="w-full rounded-lg px-4 py-2 outline-none pr-10 focus:border-primary">
+                        <i class="fa-solid fa-eye absolute right-3 top-9 text-textMuted cursor-pointer" onclick="togglePass('l-password')"></i>
+                    </div>
+                    <p id="l-error" class="text-red-500 text-sm hidden"></p>
+                    <button type="submit" id="l-btn" class="w-full bg-primary hover:bg-primaryHover text-white font-semibold py-2 rounded-lg transition mt-4">Sign In</button>
+                </form>
+                <p class="text-center text-sm text-textMuted mt-6">Don't have an account? <a href="#register" class="text-primary hover:underline">Register</a></p>
+            `;
+            document.getElementById('app').innerHTML = renderAuthLayout(html);
+            
+            const emailInput = document.getElementById('l-email');
+            const emailError = document.getElementById('l-email-error');
+            const submitBtn = document.getElementById('l-btn');
+
+            function validateEmail() {
+                const val = emailInput.value.trim();
+                
+                if (!val) {
+                    emailError.innerText = "Email field is required";
+                    emailError.classList.remove('hidden');
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    return false;
+                }
+                
+                if (!val.endsWith('@gmail.com')) {
+                    emailError.innerText = "Only Gmail accounts are allowed. Please enter an email ending with @gmail.com";
+                    emailError.classList.remove('hidden');
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    return false;
+                }
+
+                const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+                if (!gmailRegex.test(val)) {
+                    emailError.innerText = "Invalid email format. Use example@gmail.com";
+                    emailError.classList.remove('hidden');
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    return false;
+                }
+
+                emailError.innerText = "";
+                emailError.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                return true;
+            }
+
+            emailInput.addEventListener('input', validateEmail);
+            
+            document.getElementById('login-form').onsubmit = async (e) => {
+                e.preventDefault();
+                if (!validateEmail()) return;
+                
+                submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                try {
+                    const res = await fetch(API_BASE + '/login', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email: emailInput.value, password: document.getElementById('l-password').value}) });
+                    const data = await res.json();
+                    if(!res.ok) throw new Error(data.detail || 'Login failed');
+                    localStorage.setItem('edunexa_token', data.token);
+                    localStorage.setItem('edunexa_user', JSON.stringify({name: data.name, email: data.email}));
+                    navigate('dashboard');
+                } catch(err) {
+                    document.getElementById('l-error').innerText = err.message;
+                    document.getElementById('l-error').classList.remove('hidden');
+                } finally { submitBtn.innerHTML = 'Sign In'; }
+            };
+        }
+
+        async function renderRegister() {
+            const html = `
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold mb-2 text-text">Create Account</h2>
+                    <p class="text-textMuted text-sm">Join EduNexa today</p>
+                </div>
+                <form id="reg-form" class="space-y-4">
+                    <div><label class="block text-sm mb-1 text-text">Name</label><input type="text" id="r-name" required class="w-full rounded-lg px-4 py-2 outline-none focus:border-primary"></div>
+                    <div><label class="block text-sm mb-1 text-text">Email</label><input type="email" id="r-email" required class="w-full rounded-lg px-4 py-2 outline-none focus:border-primary"></div>
+                    <div class="relative">
+                        <label class="block text-sm mb-1 text-text">Password</label>
+                        <input type="password" id="r-password" required class="w-full rounded-lg px-4 py-2 outline-none pr-10 focus:border-primary">
+                        <i class="fa-solid fa-eye absolute right-3 top-9 text-textMuted cursor-pointer" onclick="togglePass('r-password')"></i>
+                    </div>
+                    <div><label class="block text-sm mb-1 text-text">Confirm Password</label><input type="password" id="r-confirm" required class="w-full rounded-lg px-4 py-2 outline-none focus:border-primary"></div>
+                    <p id="r-error" class="text-red-500 text-sm hidden"></p>
+                    <button type="submit" id="r-btn" class="w-full bg-primary hover:bg-primaryHover text-white font-semibold py-2 rounded-lg transition mt-4">Register</button>
+                </form>
+                <p class="text-center text-sm text-textMuted mt-6">Already have an account? <a href="#login" class="text-primary hover:underline">Sign In</a></p>
+            `;
+            document.getElementById('app').innerHTML = renderAuthLayout(html);
+            document.getElementById('reg-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const pass = document.getElementById('r-password').value;
+                if (pass !== document.getElementById('r-confirm').value) {
+                    document.getElementById('r-error').innerText = 'Passwords do not match';
+                    document.getElementById('r-error').classList.remove('hidden'); return;
+                }
+                const btn = document.getElementById('r-btn');
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                try {
+                    const res = await fetch(API_BASE + '/register', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: document.getElementById('r-name').value, email: document.getElementById('r-email').value, password: pass}) });
+                    const data = await res.json();
+                    if(!res.ok) throw new Error(data.detail || 'Registration failed');
+                    alert("Registered successfully! Please login.");
+                    navigate('login');
+                } catch(err) {
+                    document.getElementById('r-error').innerText = err.message;
+                    document.getElementById('r-error').classList.remove('hidden');
+                } finally { btn.innerHTML = 'Register'; }
+            };
+        }
+
+        async function renderDashboard() {
+            const data = await preloadData();
+            const d = data.desc.stats;
+            const passCount = data.raw.filter(x => x.pass_fail === 1).length;
+            const passRate = data.raw.length > 0 ? ((passCount / data.raw.length) * 100).toFixed(1) : 0;
+            const sw = data.desc.shapiro_wilk;
+            
+            const html = `
+            <div class="glass-card p-4 rounded-lg mb-8 flex items-center gap-3 border-primary text-primary">
+                <i class="fa-solid fa-hand-wave text-xl"></i> <span>Welcome back, <strong>${getUser().name}</strong>! Here's a summary of your active dataset.</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="glass-card p-6" style="border-top-width: 4px; border-top-color: #3b82f6;"><p class="text-textMuted text-sm uppercase">Avg Marks</p><h3 class="text-3xl font-bold mt-1 text-text">${d.marks.mean}</h3></div>
+                <div class="glass-card p-6" style="border-top-width: 4px; border-top-color: #14B8A6;"><p class="text-textMuted text-sm uppercase">Study (hrs/day)</p><h3 class="text-3xl font-bold mt-1 text-text">${d.study_hours_per_day.mean}</h3></div>
+                <div class="glass-card p-6" style="border-top-width: 4px; border-top-color: #8B5CF6;"><p class="text-textMuted text-sm uppercase">Attendance</p><h3 class="text-3xl font-bold mt-1 text-text">${d.attendance_percentage.mean}%</h3></div>
+                <div class="glass-card p-6" style="border-top-width: 4px; border-top-color: #f43f5e;"><p class="text-textMuted text-sm uppercase">Pass Rate</p><h3 class="text-3xl font-bold mt-1 text-text">${passRate}%</h3></div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="lg:col-span-2 glass-card p-6">
+                    <h3 class="font-semibold text-lg mb-4 text-text">Marks Distribution</h3>
+                    <div class="h-80"><canvas id="c-hist"></canvas></div>
+                </div>
+                <div class="glass-card p-6 flex flex-col gap-4 text-text">
+                    <h3 class="font-semibold text-lg mb-2">Descriptive Deep Dive</h3>
+                    <div class="bg-surfaceHover p-4 rounded border border-border">
+                        <p class="text-sm font-semibold mb-1">Marks 95% Confidence Interval</p>
+                        <p class="text-lg font-mono text-primary">[${d.marks.ci_95 ? d.marks.ci_95[0] : '--'}, ${d.marks.ci_95 ? d.marks.ci_95[1] : '--'}]</p>
+                    </div>
+                    <div class="bg-surfaceHover p-4 rounded border border-border flex-1">
+                        <p class="text-sm font-semibold mb-1">Normality (Shapiro-Wilk)</p>
+                        <p class="text-xs text-textMuted mb-2">Checking if marks follow a normal distribution.</p>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm">W-Statistic:</span><span class="font-mono text-sm">${sw ? sw.w : '--'}</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm">P-Value:</span><span class="font-mono text-sm">${sw ? sw.p_value.toFixed(4) : '--'}</span>
+                        </div>
+                        <p class="text-xs font-bold px-2 py-1 rounded text-white text-center ${sw && sw.p_value >= 0.05 ? 'bg-green-500' : 'bg-red-500'}">
+                            ${sw && sw.p_value >= 0.05 ? 'Normal (Fail to reject H0)' : 'Not Normal (Reject H0)'}
+                        </p>
+                    </div>
+                </div>
+            </div>`;
+            document.getElementById('app').innerHTML = renderMainLayout(html, 'Performance Overview', 'High-level metrics and score distribution.');
+            
+            const ctx = document.getElementById('c-hist');
+            destroyChart('c-hist');
+            charts['c-hist'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.desc.histogram.map(h => h.bin),
+                    datasets: [{ label: 'Students', data: data.desc.histogram.map(h => h.count), backgroundColor: '#14B8A6', borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: getChartScales() }
+            });
+        }
+
+        async function renderData() {
+            const data = await preloadData();
+            const html = `
+            <div id="data-msg" class="hidden mb-4 p-4 rounded glass-card font-medium"></div>
+            <div class="flex flex-wrap gap-4 mb-6">
+                <button onclick="regenData(this)" class="bg-primary hover:bg-primaryHover px-4 py-2 rounded-lg text-white text-sm font-medium transition"><i class="fa-solid fa-rotate-right mr-2"></i> Reset to generated dataset</button>
+                <button onclick="document.getElementById('csvUpload').click()" class="glass-card px-4 py-2 rounded-lg text-sm font-medium transition hover:bg-surfaceHover text-text"><i class="fa-solid fa-upload mr-2"></i> Upload CSV</button>
+                <a href="${API_BASE}/template" class="glass-card px-4 py-2 rounded-lg text-sm font-medium transition hover:bg-surfaceHover text-text"><i class="fa-solid fa-download mr-2"></i> Download Template</a>
+                <button onclick="downloadSample100()" class="glass-card px-4 py-2 rounded-lg text-sm font-medium transition hover:bg-surfaceHover text-text"><i class="fa-solid fa-file-csv mr-2"></i> Generate 100-Row Sample</button>
+                <input type="file" id="csvUpload" class="hidden" accept=".csv" onchange="uploadCSV(this)">
+            </div>
+            <div class="glass-card overflow-hidden">
+                <div class="p-4 border-b border-border flex justify-between items-center text-text">
+                    <h3 class="font-semibold">Dataset Preview (First 10 Rows)</h3>
+                    <span class="text-sm text-textMuted">Total valid rows: ${data.raw.length}</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-text">
+                        <thead class="bg-surface border-b border-border text-textMuted">
+                            <tr><th class="p-4">ID</th><th class="p-4">Study Hrs</th><th class="p-4">Attendance %</th><th class="p-4">Sleep Hrs</th><th class="p-4">Marks</th><th class="p-4">Status</th></tr>
+                        </thead>
+                        <tbody>
+                            ${data.raw.slice(0,10).map(r => `
+                            <tr class="border-b border-border">
+                                <td class="p-4 text-textMuted">#${r.student_id || '-'}</td><td class="p-4">${r.study_hours_per_day}</td>
+                                <td class="p-4">${r.attendance_percentage}</td><td class="p-4">${r.sleep_hours}</td>
+                                <td class="p-4 font-bold">${r.marks}</td>
+                                <td class="p-4"><span class="px-2 py-1 rounded text-xs text-white ${r.pass_fail?'bg-green-500':'bg-red-500'}">${r.pass_fail?'Pass':'Fail'}</span></td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+            document.getElementById('app').innerHTML = renderMainLayout(html, 'Data Manager', 'Upload or generate your dataset.');
+        }
+
+        async function uploadCSV(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const msgBox = document.getElementById('data-msg');
+            msgBox.className = 'mb-4 p-4 rounded glass-card font-medium text-blue-500 border border-blue-500 block';
+            msgBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Uploading and processing...';
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const res = await fetch(API_BASE + '/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${getToken()}` },
+                    body: formData
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Upload failed');
+                
+                msgBox.className = 'mb-4 p-4 rounded glass-card font-medium text-green-500 border border-green-500 block';
+                msgBox.innerHTML = `<i class="fa-solid fa-check mr-2"></i> ${data.message}`;
+                
+                cachedData = null;
+                await preloadData(true);
+                setTimeout(() => renderData(), 1500);
+            } catch (err) {
+                msgBox.className = 'mb-4 p-4 rounded glass-card font-medium text-red-500 border border-red-500 block';
+                msgBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> ${err.message}`;
+            }
+            input.value = '';
+        }
+
+        async function renderHabits() {
+            const data = await preloadData();
+            const html = `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass-card p-6">
+                    <div class="flex justify-between items-center mb-4 text-text">
+                        <h3 class="font-semibold">Study Hours vs Marks</h3>
+                        <span class="text-xs font-bold text-white bg-green-500 px-2 py-1 rounded">R²: ${data.reg.simple_linear.r_squared.toFixed(2)}</span>
+                    </div>
+                    <div class="h-64"><canvas id="c-scatter"></canvas></div>
+                </div>
+                <div class="glass-card p-6">
+                    <h3 class="font-semibold mb-4 text-text">Correlation Matrix</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-center text-xs border-collapse">
+                            ${(() => {
+                                const vars = ['study_hours_per_day', 'attendance_percentage', 'sleep_hours', 'marks'];
+                                let r = '<tr><th class="border-border"></th>' + vars.map(v=>`<th class="p-2 border-b border-border text-textMuted">${v.replace(/_/g,' ')}</th>`).join('') + '</tr>';
+                                vars.forEach(v1 => {
+                                    r += `<tr><td class="p-2 border-b border-border text-left font-medium capitalize text-text">${v1.replace(/_/g,' ')}</td>`;
+                                    vars.forEach(v2 => {
+                                        const val = data.corr.pearson[v1][v2];
+                                        let c = val > 0.5 && val < 1 ? 'rgba(20, 184, 166, 0.4)' : val < -0.5 ? 'rgba(248, 113, 113, 0.4)' : 'var(--heatmap-0)';
+                                        r += `<td class="p-2 border-b border-border font-bold text-text" style="background:${val===1?'var(--color-surface-hover)':c}">${val.toFixed(2)}</td>`;
+                                    }); r += '</tr>';
+                                }); return r;
+                            })()}
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+            document.getElementById('app').innerHTML = renderMainLayout(html, 'Study Habits', 'Analyze correlations and trends between variables.');
+            destroyChart('c-scatter');
+            charts['c-scatter'] = new Chart(document.getElementById('c-scatter'), {
+                type: 'scatter',
+                data: { datasets: [{ label: 'Students', data: data.raw.map(d=>({x:d.study_hours_per_day, y:d.marks})), backgroundColor: '#8B5CF6' }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: getChartScales() }
+            });
+        }
+
+        async function renderProbabilities() {
+            const data = await preloadData();
+            const p = data.prob;
+            const html = `
+            <div class="glass-card p-6 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-text">
+                    <div class="bg-surfaceHover p-6 rounded-lg border border-border">
+                        <p class="text-sm text-textMuted">Baseline Chance (Marks > 75)</p>
+                        <p class="text-3xl font-bold text-primary mt-2">${(p.p_marks_gt_75*100).toFixed(1)}%</p>
+                    </div>
+                    <div class="bg-surfaceHover p-6 rounded-lg border border-border">
+                        <p class="text-sm text-textMuted">If Attendance > 90%</p>
+                        <p class="text-3xl font-bold text-green-500 mt-2">${(p.p_marks_given_att*100).toFixed(1)}% chance</p>
+                    </div>
+                </div>
+                <details class="mt-6 group">
+                    <summary class="cursor-pointer text-sm text-primary flex items-center gap-2 outline-none"><i class="fa-solid fa-chevron-right group-open:rotate-90 transition"></i> Show Bayes' Theorem Math</summary>
+                    <div class="mt-4 p-4 bg-surfaceHover rounded border border-border font-mono text-xs text-textMuted">
+                        ${p.bayes_formula}<br>${p.bayes_substituted}
+                    </div>
+                </details>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 text-text mb-6">
+                <div class="glass-card p-6">
+                    <h3 class="font-semibold text-lg mb-4">Calculators</h3>
+                    <div class="mb-4 bg-surfaceHover p-4 rounded border border-border">
+                        <h4 class="text-sm font-bold mb-2">Normal Distribution</h4>
+                        <p class="text-xs text-textMuted mb-2">Using sample mean (51.46) and std dev (21.91).</p>
+                        <p class="text-lg font-mono">P(X > 75) ≈ 14.13%</p>
+                    </div>
+                    <div class="bg-surfaceHover p-4 rounded border border-border">
+                        <h4 class="text-sm font-bold mb-2">Binomial Application</h4>
+                        <p class="text-xs text-textMuted mb-2">n=10 exams, p=0.75 pass probability.</p>
+                        <p class="text-lg font-mono">P(X ≥ 8) ≈ 52.56%</p>
+                    </div>
+                </div>
+                
+                <div class="glass-card p-6">
+                    <h3 class="font-semibold text-lg mb-4">CLT Demonstration</h3>
+                    <p class="text-sm text-textMuted mb-4">Drawing N=30 samples from a uniform sleep distribution converges to a normal distribution.</p>
+                    <div class="bg-surfaceHover p-4 rounded border border-border flex flex-col items-center justify-center min-h-[150px]">
+                        <p class="text-xs font-mono text-primary">Normal Approximation Active</p>
+                        <p class="text-sm mt-2 font-semibold">μ ≈ 7.1</p>
+                        <div class="w-full h-8 bg-background/50 mt-4 rounded-full overflow-hidden relative">
+                            <div class="absolute left-1/4 right-1/4 top-0 bottom-0 bg-primary/40"></div>
+                            <div class="absolute left-1/2 top-0 bottom-0 w-1 bg-primary"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+            document.getElementById('app').innerHTML = renderMainLayout(html, 'Probabilities', 'Conditional and Bayesian probability analysis.');
+        }
+
+        async function renderHypothesis() {
+            const data = await preloadData();
+            const h = data.hyp;
+            const fP = p => p < 0.0001 ? '< 0.0001' : p.toFixed(4);
+            
+            let tTestTail = 'two';
+            let zTestTail = 'two';
+            
+            function getPVal(res, tail) {
+                if(!res.valid) return 1.0;
+                if(tail === 'two') return res.p_two;
+                if(tail === 'right') return res.p_right;
+                if(tail === 'left') return res.p_left;
+            }
+            
+            function getConclusion(p) {
+                return p < 0.05 ? 'Reject H0' : 'Fail to reject H0';
+            }
+            
+            function getBadge(p, type) {
+                if(type === 'sig') return p < 0.05 ? '<span class="text-xs font-bold px-2 py-1 rounded text-white bg-green-500">Significant</span>' : '<span class="text-xs font-bold px-2 py-1 rounded text-white bg-red-500">Not Significant</span>';
+                if(type === 'dep') return p < 0.05 ? '<span class="text-xs font-bold px-2 py-1 rounded text-white bg-green-500">Dependent</span>' : '<span class="text-xs font-bold px-2 py-1 rounded text-white bg-red-500">Independent</span>';
+            }
+            
+            function getBox(p, conclusion) {
+                if(p < 0.05) return `<p class="font-medium p-3 rounded border border-green-500 bg-green-500/10 text-green-600 dark:text-green-400">Conclusion: ${conclusion}.</p>`;
+                return `<p class="font-medium p-3 rounded border border-red-500 bg-red-500/10 text-red-600 dark:text-red-400">Conclusion: ${conclusion}.</p>`;
+            }
+            
+            function updateUI() {
+                const pT = getPVal(h.t_test, tTestTail);
+                const pZ = getPVal(h.z_test_proportions, zTestTail);
+                
+                let tH0 = 'H0: &mu;1 = &mu;2';
+                let tH1 = 'H1: &mu;1 &ne; &mu;2';
+                let tLabel = 'Two-tailed';
+                if(tTestTail === 'right') { tH0 = 'H0: &mu;1 &le; &mu;2'; tH1 = 'H1: &mu;1 &gt; &mu;2'; tLabel = 'One-tailed (Right)'; }
+                if(tTestTail === 'left') { tH0 = 'H0: &mu;1 &ge; &mu;2'; tH1 = 'H1: &mu;1 &lt; &mu;2'; tLabel = 'One-tailed (Left)'; }
+                
+                let zH0 = 'H0: p1 = p2';
+                let zH1 = 'H1: p1 &ne; p2';
+                let zLabel = 'Two-tailed';
+                if(zTestTail === 'right') { zH0 = 'H0: p1 &le; p2'; zH1 = 'H1: p1 &gt; p2'; zLabel = 'One-tailed (Right)'; }
+                if(zTestTail === 'left') { zH0 = 'H0: p1 &ge; p2'; zH1 = 'H1: p1 &lt; p2'; zLabel = 'One-tailed (Left)'; }
+                
+                document.getElementById('t-badge').innerHTML = h.t_test.valid ? getBadge(pT, 'sig') : '<span class="text-xs font-bold px-2 py-1 rounded text-white bg-gray-500">Error</span>';
+                document.getElementById('t-box').innerHTML = h.t_test.valid ? getBox(pT, getConclusion(pT)) : `<p class="text-red-500">${h.t_test.error_msg}</p>`;
+                document.getElementById('t-stats').innerText = h.t_test.valid ? `P-value: ${fP(pT)} | T-Stat: ${h.t_test.t_statistic}` : '';
+                document.getElementById('t-h0').innerHTML = tH0;
+                document.getElementById('t-h1').innerHTML = tH1;
+                document.getElementById('t-tail-label').innerText = `Tail used: ${tLabel}`;
+                
+                document.getElementById('z-badge').innerHTML = h.z_test_proportions.valid ? getBadge(pZ, 'sig') : '<span class="text-xs font-bold px-2 py-1 rounded text-white bg-gray-500">Error</span>';
+                document.getElementById('z-box').innerHTML = h.z_test_proportions.valid ? getBox(pZ, getConclusion(pZ)) : `<p class="text-red-500">${h.z_test_proportions.error_msg}</p>`;
+                document.getElementById('z-stats').innerText = h.z_test_proportions.valid ? `P-value: ${fP(pZ)} | Z-Stat: ${h.z_test_proportions.z_statistic}` : '';
+                document.getElementById('z-h0').innerHTML = zH0;
+                document.getElementById('z-h1').innerHTML = zH1;
+                document.getElementById('z-tail-label').innerText = `Tail used: ${zLabel}`;
+            }
+            
+            const htmlStr = `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 text-text">
+                <div class="glass-card p-6 relative overflow-hidden flex flex-col">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="font-semibold text-lg mb-1">Study Hours (T-Test)</h3>
+                            <div class="flex items-center gap-2 mb-2">
+                                <label class="text-sm font-medium">Tail Type:</label>
+                                <select id="t-tail-sel" class="bg-background text-text text-sm rounded border border-border px-2 py-1 outline-none focus:border-primary">
+                                    <option value="two">Two-tailed (default)</option>
+                                    <option value="right">One-tailed (Right)</option>
+                                    <option value="left">One-tailed (Left)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="t-badge"></div>
+                    </div>
+                    <p id="t-tail-label" class="text-sm text-primary font-medium mb-3"></p>
+                    <div class="text-sm text-textMuted mb-4 space-y-1 bg-surfaceHover p-2 rounded">
+                        <p id="t-h0"></p>
+                        <p id="t-h1" class="font-semibold text-text"></p>
+                    </div>
+                    <div class="mt-auto">
+                        <div id="t-box"></div>
+                        <p id="t-stats" class="text-xs text-textMuted mt-4 font-mono"></p>
+                    </div>
+                </div>
+                
+                <div class="glass-card p-6 relative overflow-hidden flex flex-col">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="font-semibold text-lg mb-1">Attendance (Z-Test)</h3>
+                            <div class="flex items-center gap-2 mb-2">
+                                <label class="text-sm font-medium">Tail Type:</label>
+                                <select id="z-tail-sel" class="bg-background text-text text-sm rounded border border-border px-2 py-1 outline-none focus:border-primary">
+                                    <option value="two">Two-tailed (default)</option>
+                                    <option value="right">One-tailed (Right)</option>
+                                    <option value="left">One-tailed (Left)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="z-badge"></div>
+                    </div>
+                    <p id="z-tail-label" class="text-sm text-primary font-medium mb-3"></p>
+                    <div class="text-sm text-textMuted mb-4 space-y-1 bg-surfaceHover p-2 rounded">
+                        <p id="z-h0"></p>
+                        <p id="z-h1" class="font-semibold text-text"></p>
+                    </div>
+                    <div class="mt-auto">
+                        <div id="z-box"></div>
+                        <p id="z-stats" class="text-xs text-textMuted mt-4 font-mono"></p>
+                    </div>
+                </div>
+                
+                <div class="glass-card p-6 relative overflow-hidden flex flex-col">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="font-semibold text-lg mb-1">Independence (Chi-Square)</h3>
+                        </div>
+                        <div id="c-badge">${h.chi_square.valid ? getBadge(h.chi_square.p_value, 'dep') : '<span class="text-xs font-bold px-2 py-1 rounded text-white bg-gray-500">Error</span>'}</div>
+                    </div>
+                    <p class="text-sm text-primary font-medium mb-3 w-max cursor-help" title="These tests use the F/Chi-square distribution which are inherently right-tailed.">Tail used: Right-tailed (fixed) &#9432;</p>
+                    <div class="text-sm text-textMuted mb-4 space-y-1 bg-surfaceHover p-2 rounded">
+                        <p>H0: Attendance & Pass Rate are independent</p>
+                        <p class="font-semibold text-text">H1: They are dependent</p>
+                    </div>
+                    <div class="mt-auto">
+                        <div id="c-box">${h.chi_square.valid ? getBox(h.chi_square.p_value, h.chi_square.p_value < 0.05 ? 'Reject H0 (Dependent)' : 'Fail to reject H0 (Independent)') : `<p class="text-red-500">${h.chi_square.error_msg}</p>`}</div>
+                        <p id="c-stats" class="text-xs text-textMuted mt-4 font-mono">${h.chi_square.valid ? `P-value: ${fP(h.chi_square.p_value)} | Chi&sup2;: ${h.chi_square.chi2_statistic}` : ''}</p>
+                    </div>
+                </div>
+                
+                <div class="glass-card p-6 relative overflow-hidden flex flex-col">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="font-semibold text-lg mb-1">Variance (ANOVA)</h3>
+                        </div>
+                        <div id="a-badge">${h.anova.valid ? getBadge(h.anova.p_value, 'sig') : '<span class="text-xs font-bold px-2 py-1 rounded text-white bg-gray-500">Error</span>'}</div>
+                    </div>
+                    <p class="text-sm text-primary font-medium mb-3 w-max cursor-help" title="These tests use the F/Chi-square distribution which are inherently right-tailed.">Tail used: Right-tailed (fixed) &#9432;</p>
+                    <div class="text-sm text-textMuted mb-4 space-y-1 bg-surfaceHover p-2 rounded">
+                        <p>H0: All study group means are equal</p>
+                        <p class="font-semibold text-text">H1: At least one mean is different</p>
+                    </div>
+                    <div class="mt-auto">
+                        <div id="a-box">${h.anova.valid ? getBox(h.anova.p_value, h.anova.p_value < 0.05 ? 'Reject H0' : 'Fail to reject H0') : `<p class="text-red-500">${h.anova.error_msg}</p>`}</div>
+                        <p id="a-stats" class="text-xs text-textMuted mt-4 font-mono">${h.anova.valid ? `P-value: ${fP(h.anova.p_value)} | F-Stat: ${h.anova.f_statistic}` : ''}</p>
+                    </div>
+                </div>
+            </div>`;
+            
+            document.getElementById('app').innerHTML = renderMainLayout(htmlStr, 'Hypothesis Testing', 'Statistical significance tests validating assumptions.');
+            
+            updateUI();
+            
+            const tSel = document.getElementById('t-tail-sel');
+            if(tSel) tSel.addEventListener('change', (e) => { tTestTail = e.target.value; updateUI(); });
+            
+            const zSel = document.getElementById('z-tail-sel');
+            if(zSel) zSel.addEventListener('change', (e) => { zTestTail = e.target.value; updateUI(); });
+        }
+
+        async function renderPredictor() {
+            const data = await preloadData();
+            const reg = data.reg.multiple_linear;
+            
+            const html = `
+            <div class="glass-card p-8 grid grid-cols-1 lg:grid-cols-2 gap-12 text-text mb-8">
+                <form id="pred-form" class="space-y-6">
+                    <div>
+                        <div class="flex justify-between mb-2"><label class="text-sm">Study Hours</label><span id="v-study" class="font-bold text-primary">6.0 hrs</span></div>
+                        <input type="range" id="i-study" min="0" max="12" step="0.5" value="6" oninput="document.getElementById('v-study').innerText=this.value+' hrs'">
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-2"><label class="text-sm">Attendance %</label><span id="v-att" class="font-bold" style="color: #14B8A6">85%</span></div>
+                        <input type="range" id="i-att" min="0" max="100" step="1" value="85" oninput="document.getElementById('v-att').innerText=this.value+'%'">
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-2"><label class="text-sm">Sleep Hours</label><span id="v-sleep" class="font-bold" style="color: #8B5CF6">7.0 hrs</span></div>
+                        <input type="range" id="i-sleep" min="2" max="12" step="0.5" value="7" oninput="document.getElementById('v-sleep').innerText=this.value+' hrs'">
+                    </div>
+                    <button type="submit" class="w-full bg-primary hover:bg-primaryHover text-white font-bold py-3 rounded-lg transition"><i class="fa-solid fa-wand-magic-sparkles"></i> Predict</button>
+                </form>
+                <div class="flex flex-col items-center justify-center relative min-h-[250px]">
+                    <div class="relative w-full max-w-[250px]"><canvas id="c-gauge"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-end pb-6 pointer-events-none">
+                            <span class="text-4xl font-bold" id="gauge-score">--</span><span class="text-xs text-textMuted">Predicted Marks</span>
+                        </div>
+                    </div>
+                    <p id="pred-tip" class="text-center mt-4 text-textMuted">Set values and predict.</p>
+                </div>
+            </div>
+            
+            <div class="glass-card p-6 text-text">
+                <h3 class="font-semibold text-lg mb-4">Regression Diagnostics</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div class="p-4 bg-background/50 rounded-lg text-center">
+                        <div class="text-xs text-textMuted uppercase mb-1">Model R²</div>
+                        <div class="font-bold text-xl">${reg.r_squared}</div>
+                    </div>
+                    <div class="p-4 bg-background/50 rounded-lg text-center">
+                        <div class="text-xs text-textMuted uppercase mb-1">Adjusted R²</div>
+                        <div class="font-bold text-xl">${reg.adjusted_r_squared || '--'}</div>
+                    </div>
+                    <div class="p-4 bg-background/50 rounded-lg text-center">
+                        <div class="text-xs text-textMuted uppercase mb-1">Test Split R²</div>
+                        <div class="font-bold text-xl">${reg.test_r_squared || '--'}</div>
+                    </div>
+                    <div class="p-4 bg-background/50 rounded-lg text-center">
+                        <div class="text-xs text-textMuted uppercase mb-1">Model RMSE</div>
+                        <div class="font-bold text-xl">${reg.model_rmse || '--'}</div>
+                    </div>
+                </div>
+                <p class="text-sm text-textMuted">VIF (Collinearity): Study = ${reg.vif ? reg.vif.study_hours : '--'}, Attendance = ${reg.vif ? reg.vif.attendance : '--'}, Sleep = ${reg.vif ? reg.vif.sleep_hours : '--'}</p>
+            </div>
+            `;
+            document.getElementById('app').innerHTML = renderMainLayout(html, 'Predictor', 'Multiple linear regression forecasting model with diagnostics.');
+            
+            destroyChart('c-gauge');
+            charts['c-gauge'] = new Chart(document.getElementById('c-gauge'), {
+                type: 'doughnut',
+                data: { datasets: [{ data: [0, 100], backgroundColor: ['#14B8A6', '#cbd5e1'], borderWidth: 0, circumference: 180, rotation: 270 }] },
+                options: { responsive: true, cutout: '80%', plugins: { tooltip: { enabled: false } }, animation: { duration: 1000 } }
+            });
+            updateGaugeTheme();
+
+            document.getElementById('pred-form').onsubmit = async (e) => {
+                e.preventDefault();
+                
+                const studyVal = parseFloat(document.getElementById('i-study').value);
+                const attVal = parseFloat(document.getElementById('i-att').value);
+                const sleepVal = parseFloat(document.getElementById('i-sleep').value);
+                
+                let failedRules = [];
+                if (attVal < 65) failedRules.push("• Attendance below 65%");
+                if (sleepVal < 5) failedRules.push("• Sleep hours below 5 hrs");
+                if (studyVal < 5) failedRules.push("• Study hours below 5 hrs");
+                
+                if (failedRules.length > 0) {
+                    document.getElementById('gauge-score').innerText = "--";
+                    charts['c-gauge'].data.datasets[0].data = [0, 100];
+                    charts['c-gauge'].data.datasets[0].backgroundColor = ['#ef4444', getEmptyGaugeColor()];
+                    charts['c-gauge'].update();
+                    
+                    document.getElementById('pred-tip').innerHTML = `
+                        <div class="text-left bg-red-500/10 border border-red-500/20 p-3 rounded mt-2">
+                            <span style="color:#ef4444; font-weight: 600">Student does not meet requirements:</span>
+                            <span class="text-sm text-textMuted mt-1 block leading-relaxed">${failedRules.join("<br>")}</span>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const body = JSON.stringify({ study_hours: studyVal, attendance: attVal, sleep_hours: sleepVal });
+                try {
+                    const res = await fetchAuth('/predict', { method: 'POST', body });
+                    const data = await res.json();
+                    const score = parseFloat(data.predicted_marks);
+                    let color = score >= 80 ? '#10b981' : score < 40 ? '#ef4444' : '#14B8A6';
+                    
+                    charts['c-gauge'].data.datasets[0].data = [score, 100-score];
+                    charts['c-gauge'].data.datasets[0].backgroundColor = [color, getEmptyGaugeColor()];
+                    charts['c-gauge'].update();
+                    document.getElementById('gauge-score').innerText = score;
+                    let piText = data.prediction_interval ? 
+                        `95% Prediction Interval: [${data.prediction_interval[0]} - ${data.prediction_interval[1]}]` : 
+                        '95% CI: ±5 marks';
+                        
+                    document.getElementById('pred-tip').innerHTML = `
+                        <div class="mt-2 text-center">
+                            <span style="color:${color}; font-weight: 600">Student is eligible. Predicted marks: ${score}</span><br>
+                            <span class="text-xs text-textMuted mt-1 block">${piText}</span>
+                        </div>
+                    `;
+                } catch(err) { alert('Prediction failed.'); }
+            };
+        }
+
+        async function renderReports() {
+            const data = await preloadData();
+            if (!data || !data.raw || data.raw.length === 0) {
+                document.getElementById('app').innerHTML = renderMainLayout('<div class="p-6">No data available. Please generate or upload a dataset.</div>', 'Reports', '');
+                return;
+            }
+            
+            const d = data.desc.stats;
+            const passCount = data.raw.filter(x => x.pass_fail === 1).length;
+            const passRate = data.raw.length > 0 ? ((passCount / data.raw.length) * 100).toFixed(1) : 0;
+            const p = data.prob;
+            const h = data.hyp;
+            const c = data.corr;
+
+            const html = `
+            <div class="bg-white text-black p-8 md:p-12 rounded-lg shadow-sm print:shadow-none print:p-0 print:m-0 print:block relative" style="color: black !important; background: white !important;">
+                
+                <button onclick="window.print()" class="absolute top-8 right-8 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-6 rounded-lg transition shadow-md no-print flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Download PDF
+                </button>
+
+                <div class="text-center border-b border-gray-300 pb-6 mb-8 mt-4">
+                    <div class="w-16 h-16 mx-auto monochrome-logo text-black">${nexaIconSVG}</div>
+                    <h1 class="text-3xl font-bold mt-2 text-black">EduNexa Report</h1>
+                    <p class="text-sm text-gray-600">Academic Performance & Study Habit Analysis</p>
+                    <p class="text-xs text-gray-500 mt-2">Generated on: ${new Date().toLocaleDateString()} | Total Records: ${data.raw.length}</p>
+                </div>
+
+                <!-- 1. KPIs -->
+                <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">1. Performance Overview</h2>
+                <div class="grid grid-cols-4 gap-4 mb-8 text-center">
+                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Avg Marks</p><h3 class="text-2xl font-bold text-black">${d.marks.mean}</h3></div>
+                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Study (hrs/day)</p><h3 class="text-2xl font-bold text-black">${d.study_hours_per_day.mean}</h3></div>
+                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Attendance</p><h3 class="text-2xl font-bold text-black">${d.attendance_percentage.mean}%</h3></div>
+                    <div class="p-4 border border-gray-200 rounded-lg"><p class="text-gray-500 text-xs uppercase mb-1">Pass Rate</p><h3 class="text-2xl font-bold text-black">${passRate}%</h3></div>
+                </div>
+
+                <!-- 2. Descriptive Stats Table -->
+                <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">2. Descriptive Statistics</h2>
+                <table class="w-full text-left text-sm mb-8 border border-gray-300">
+                    <thead class="bg-gray-100 text-black">
+                        <tr><th class="p-2 border-b border-gray-300">Variable</th><th class="p-2 border-b border-gray-300">Mean</th><th class="p-2 border-b border-gray-300">Median</th><th class="p-2 border-b border-gray-300">Std Dev</th><th class="p-2 border-b border-gray-300">Variance</th><th class="p-2 border-b border-gray-300">Range</th></tr>
+                    </thead>
+                    <tbody class="text-black">
+                        <tr><td class="p-2 border-b border-gray-200 font-semibold">Marks</td><td class="p-2 border-b border-gray-200">${d.marks.mean}</td><td class="p-2 border-b border-gray-200">${d.marks.median}</td><td class="p-2 border-b border-gray-200">${d.marks.std_dev}</td><td class="p-2 border-b border-gray-200">${d.marks.variance}</td><td class="p-2 border-b border-gray-200">${d.marks.range}</td></tr>
+                        <tr><td class="p-2 border-b border-gray-200 font-semibold">Study Hours</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.mean}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.median}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.std_dev}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.variance}</td><td class="p-2 border-b border-gray-200">${d.study_hours_per_day.range}</td></tr>
+                        <tr><td class="p-2 font-semibold">Attendance %</td><td class="p-2">${d.attendance_percentage.mean}</td><td class="p-2">${d.attendance_percentage.median}</td><td class="p-2">${d.attendance_percentage.std_dev}</td><td class="p-2">${d.attendance_percentage.variance}</td><td class="p-2">${d.attendance_percentage.range}</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 3. Correlation -->
+                <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">3. Correlation Analysis (Pearson)</h2>
+                <p class="text-sm mb-4 text-gray-700"><strong>Linear Regression R² (Study vs Marks):</strong> ${data.reg.simple_linear.r_squared.toFixed(2)}</p>
+                <table class="w-full text-center text-sm mb-8 border border-gray-300">
+                    <thead class="bg-gray-100 text-black">
+                        <tr><th class="p-2 border-b border-gray-300"></th><th class="p-2 border-b border-gray-300">Study Hrs</th><th class="p-2 border-b border-gray-300">Attendance</th><th class="p-2 border-b border-gray-300">Sleep</th><th class="p-2 border-b border-gray-300">Marks</th></tr>
+                    </thead>
+                    <tbody class="text-black">
+                        <tr><td class="p-2 border-b border-gray-200 font-semibold text-left">Study Hrs</td><td class="p-2 border-b border-gray-200">${c.pearson.study_hours_per_day.study_hours_per_day.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.study_hours_per_day.attendance_percentage.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.study_hours_per_day.sleep_hours.toFixed(2)}</td><td class="p-2 border-b border-gray-200 font-bold">${c.pearson.study_hours_per_day.marks.toFixed(2)}</td></tr>
+                        <tr><td class="p-2 border-b border-gray-200 font-semibold text-left">Attendance</td><td class="p-2 border-b border-gray-200">${c.pearson.attendance_percentage.study_hours_per_day.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.attendance_percentage.attendance_percentage.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.attendance_percentage.sleep_hours.toFixed(2)}</td><td class="p-2 border-b border-gray-200 font-bold">${c.pearson.attendance_percentage.marks.toFixed(2)}</td></tr>
+                        <tr><td class="p-2 border-b border-gray-200 font-semibold text-left">Sleep</td><td class="p-2 border-b border-gray-200">${c.pearson.sleep_hours.study_hours_per_day.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.sleep_hours.attendance_percentage.toFixed(2)}</td><td class="p-2 border-b border-gray-200">${c.pearson.sleep_hours.sleep_hours.toFixed(2)}</td><td class="p-2 border-b border-gray-200 font-bold">${c.pearson.sleep_hours.marks.toFixed(2)}</td></tr>
+                        <tr><td class="p-2 font-semibold text-left">Marks</td><td class="p-2 font-bold">${c.pearson.marks.study_hours_per_day.toFixed(2)}</td><td class="p-2 font-bold">${c.pearson.marks.attendance_percentage.toFixed(2)}</td><td class="p-2 font-bold">${c.pearson.marks.sleep_hours.toFixed(2)}</td><td class="p-2 font-bold">${c.pearson.marks.marks.toFixed(2)}</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 4. Hypothesis & Probabilities -->
+                <div class="grid grid-cols-2 gap-8 mb-8" style="page-break-inside: avoid;">
+                    <div>
+                        <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">4. Hypothesis Testing</h2>
+                        <ul class="text-sm space-y-4 text-black">
+                            <li>
+                                <strong>T-Test (Study Hours > 5)</strong><br>
+                                Conclusion: <span class="${h.t_test.p_value < 0.05 ? 'text-green-600' : 'text-red-600'} font-bold">${h.t_test.conclusion}</span><br>
+                                P-Value: ${h.t_test.p_value.toFixed(4)}
+                            </li>
+                            <li>
+                                <strong>Z-Test (Attendance > 80)</strong><br>
+                                Conclusion: <span class="${h.z_test_proportions.p_value < 0.05 ? 'text-green-600' : 'text-red-600'} font-bold">${h.z_test_proportions.conclusion}</span><br>
+                                P-Value: ${h.z_test_proportions.p_value.toFixed(4)}
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold border-b border-gray-200 pb-2 mb-4 text-black">5. Key Probabilities</h2>
+                        <ul class="text-sm space-y-4 text-black">
+                            <li><strong>Baseline Pass Probability (>75 marks):</strong> ${(p.p_marks_gt_75*100).toFixed(1)}%</li>
+                            <li><strong>High Attendance Probability (>90%):</strong> ${(p.p_att_gt_90*100).toFixed(1)}%</li>
+                            <li><strong>P(Marks > 75 | Attendance > 90):</strong> ${(p.p_marks_given_att*100).toFixed(1)}%</li>
+                        </ul>
+                    </div>
+                </div>
+                
+            </div>
+            `;
+            document.getElementById('app').innerHTML = renderMainLayout(html, 'Reports', 'Generate and print statistical reports.');
+        }
+
+        // --- Helpers ---
+        function downloadSample100() {
+            let csv = "student_id,study_hours,attendance,sleep_hours,marks\n";
+            for(let i=1; i<=100; i++) {
+                const randNormal = () => { let u = 0; for(let j=0; j<6; j++) u += Math.random(); return u - 3; };
+                let study = Math.min(12, Math.max(1, 5 + randNormal() * 2));
+                let att = Math.min(100, Math.max(40, 80 + randNormal() * 12));
+                let sleep = Math.min(10, Math.max(4, 7 + randNormal() * 1.2));
+                let noise = randNormal() * 6;
+                let marks = Math.min(100, Math.max(0, 5 + (study * 4.5) + (att * 0.45) + noise));
+                csv += `${i},${study.toFixed(1)},${Math.round(att)},${sleep.toFixed(1)},${marks.toFixed(1)}\n`;
+            }
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'sample_students_100.csv';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function togglePass(id) { const el = document.getElementById(id); el.type = el.type === 'password' ? 'text' : 'password'; }
+        function destroyChart(id) { if(charts[id]) { charts[id].destroy(); delete charts[id]; } }
+        async function regenData(btn) {
+            btn.innerHTML = 'Generating...'; btn.disabled = true;
+            try { await fetchAuth('/generate', { method: 'POST' }); cachedData = null; await preloadData(); navigate('data'); } 
+            catch(e) { alert("Error generating data."); } 
+            finally { btn.innerHTML = 'Reset to generated dataset'; btn.disabled = false; }
+        }
+        
+        function toggleTheme() {
+            const el = document.documentElement;
+            const newTheme = el.dataset.theme === 'dark' ? 'light' : 'dark';
+            el.dataset.theme = newTheme;
+            localStorage.setItem('edunexa_theme', newTheme);
+            
+            const icon = document.getElementById('theme-icon');
+            if(icon) icon.className = newTheme === 'dark' ? 'fa-solid fa-moon text-lg' : 'fa-solid fa-sun text-yellow-500 text-lg';
+            
+            Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted').trim();
+            Object.values(charts).forEach(c => {
+                const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim();
+                if(c.options.scales?.x) c.options.scales.x.grid.color = gridColor;
+                if(c.options.scales?.y) c.options.scales.y.grid.color = gridColor;
+                if(c.config.type === 'doughnut' && c.canvas.id === 'c-gauge') { updateGaugeTheme(c); }
+                c.update();
+            });
+        }
+        function getEmptyGaugeColor() { return document.documentElement.dataset.theme === 'dark' ? '#334155' : '#cbd5e1'; }
+        function updateGaugeTheme(c) {
+            let chart = c || charts['c-gauge'];
+            if(chart && chart.data.datasets[0].data[0] === 0) {
+                chart.data.datasets[0].backgroundColor[1] = getEmptyGaugeColor();
+                chart.update();
+            } else if (chart) {
+                chart.data.datasets[0].backgroundColor[1] = getEmptyGaugeColor();
+            }
+        }
+        function getChartScales() {
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim();
+            return {
+                x: { grid: { color: gridColor }, ticks: { color: 'var(--color-text-muted)' } },
+                y: { grid: { color: gridColor }, ticks: { color: 'var(--color-text-muted)' } }
+            };
+        }
+        
+        // --- Router ---
+        async function router() {
+            const hash = location.hash.replace('#', '') || 'dashboard';
+            const token = getToken();
+            
+            if (token && !cachedData) {
+                showLoader();
+                try {
+                    await preloadData();
+                } catch(e) {
+                    // loader handles error or logout
+                }
+                hideLoader();
+            }
+
+            if (!token && hash !== 'login' && hash !== 'register') { hideLoader(); return navigate('login'); }
+            if (token && (hash === 'login' || hash === 'register')) { hideLoader(); return navigate('dashboard'); }
+            
+            try {
+                if (hash === 'login') await renderLogin();
+                else if (hash === 'register') await renderRegister();
+                else if (hash === 'dashboard') await renderDashboard();
+                else if (hash === 'data') await renderData();
+                else if (hash === 'habits') await renderHabits();
+                else if (hash === 'probabilities') await renderProbabilities();
+                else if (hash === 'hypothesis') await renderHypothesis();
+                else if (hash === 'predictor') await renderPredictor();
+                else if (hash === 'reports') await renderReports();
+                else navigate('dashboard');
+                
+                const savedTheme = localStorage.getItem('edunexa_theme') || 'dark';
+                document.documentElement.dataset.theme = savedTheme;
+                const icon = document.getElementById('theme-icon');
+                if(icon) icon.className = savedTheme === 'dark' ? 'fa-solid fa-moon text-lg' : 'fa-solid fa-sun text-yellow-500 text-lg';
+                Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted').trim();
+                Chart.defaults.font.family = 'Poppins';
+            } catch (err) {
+                console.error(err);
+                if (err.message === 'Unauthorized') {
+                    executeLogout(null);
+                } else {
+                    document.getElementById('app').innerHTML = renderMainLayout(`
+                        <div class="glass-card p-8 text-center text-text max-w-lg mx-auto mt-12">
+                            <div class="text-red-500 mb-4"><i class="fa-solid fa-triangle-exclamation text-4xl"></i></div>
+                            <h2 class="text-2xl font-bold mb-2">Connection Error</h2>
+                            <p class="text-textMuted mb-6">EduNexa could not reach the server or failed to load data. The backend service may be down.</p>
+                            <button onclick="window.location.reload()" class="bg-primary hover:bg-primaryHover text-white px-6 py-2 rounded font-medium transition">Retry</button>
+                        </div>
+                    `, 'System Error', 'Service Unavailable');
+                }
+            } finally {
+                hideLoader();
+            }
+        }
+        
+        function navigate(path) { location.hash = path; }
+        window.addEventListener('hashchange', router);
+        window.addEventListener('DOMContentLoaded', router);
+    </script>
+    <div id="logout-modal" class="fixed inset-0 z-50 hidden items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity opacity-0" id="logout-backdrop" onclick="hideLogoutModal()"></div>
+        <div class="glass-card relative w-full max-w-sm p-6 transform scale-95 opacity-0 transition-all z-10 m-4 flex flex-col items-center text-center" id="logout-content" tabindex="-1">
+            <button onclick="hideLogoutModal()" class="absolute top-4 right-4 text-textMuted hover:text-text transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-4">
+                <i class="fa-solid fa-arrow-right-from-bracket text-xl"></i>
+            </div>
+            <h3 id="modal-title" class="text-xl font-bold text-text mb-2">Log out of EduNexa?</h3>
+            <p class="text-textMuted text-sm mb-1">You will need to sign in again to access your dashboard.</p>
+            <p class="text-text font-medium text-sm mb-6 bg-surfaceHover px-3 py-1.5 rounded-full inline-block" id="logout-user-info"></p>
+            <div class="flex w-full gap-3">
+                <button onclick="hideLogoutModal()" class="flex-1 px-4 py-2 rounded-lg border border-border text-text hover:bg-surfaceHover transition font-medium" id="logout-cancel">Cancel</button>
+                <button onclick="executeLogout(this)" class="flex-1 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition font-medium" id="logout-confirm">Yes, Log out</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+</body>
+</html>
