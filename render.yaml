@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: edunexa
+    env: python
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && gunicorn app:app -w 2 -k uvicorn.workers.UvicornWorker"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
