@@ -132,27 +132,37 @@ def logout():
     return {"message": "Logged out successfully"}
 
 # ----------------- DATASET MANAGEMENT -----------------
-def get_user_dataset_path(email: str):
-    safe_email = "".join([c if c.isalnum() else "_" for c in email])
-    return f"dataset_{safe_email}.csv"
-
 def get_data(user: dict):
-    path = get_user_dataset_path(user['email'])
-    if not os.path.exists(path):
-        path = "dataset.csv"
-        if not os.path.exists(path):
-            import generate_data
-            generate_data.generate_dataset(path)
-    try:
-        return pd.read_csv(path)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Dataset not found or couldn't be loaded.")
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT csv_data FROM datasets WHERE email=%s", (user['email'],))
+            row = cur.fetchone()
+            if row and row['csv_data']:
+                return pd.read_csv(io.StringIO(row['csv_data']))
+    
+    # Fallback/Generate if not in Postgres
+    from backend import generate_data
+    path = "/tmp/dataset.csv"
+    generate_data.generate_dataset(path)
+    df = pd.read_csv(path)
+    csv_data = df.to_csv(index=False)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO datasets (email, csv_data) VALUES (%s, %s) ON CONFLICT (email) DO UPDATE SET csv_data = EXCLUDED.csv_data", (user['email'], csv_data))
+        conn.commit()
+    return df
 
 @app.post("/api/generate")
 def generate_new_dataset(user: dict = Depends(get_current_user)):
-    import generate_data
-    path = get_user_dataset_path(user['email'])
+    from backend import generate_data
+    path = "/tmp/dataset_new.csv"
     generate_data.generate_dataset(path)
+    with open(path, 'r', encoding='utf-8') as f:
+        csv_data = f.read()
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO datasets (email, csv_data) VALUES (%s, %s) ON CONFLICT (email) DO UPDATE SET csv_data = EXCLUDED.csv_data", (user['email'], csv_data))
+        conn.commit()
     return {"message": "Dataset generated successfully"}
 
 @app.get("/api/template")
@@ -223,8 +233,11 @@ async def upload_dataset(file: UploadFile = File(...), user: dict = Depends(get_
     if "student_id" not in df.columns:
         df["student_id"] = np.arange(1, len(df) + 1)
         
-    path = get_user_dataset_path(user['email'])
-    df.to_csv(path, index=False)
+    csv_data = df.to_csv(index=False)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO datasets (email, csv_data) VALUES (%s, %s) ON CONFLICT (email) DO UPDATE SET csv_data = EXCLUDED.csv_data", (user['email'], csv_data))
+        conn.commit()
     
     preview = df.head(10).to_dict(orient="records")
     return {
