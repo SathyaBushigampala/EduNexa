@@ -1,4 +1,4 @@
-import pandas as pd
+﻿import pandas as pd
 import numpy as np
 import scipy.stats as stats
 import statsmodels.api as sm
@@ -13,9 +13,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import urllib.parse
+import sqlite3
 import jwt
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -50,32 +48,18 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 security = HTTPBearer()
 
 def get_db():
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        raise ValueError("DATABASE_URL environment variable is required")
-    # Neon might need sslmode=require
-    if "?" not in db_url:
-        db_url += "?sslmode=require"
-    conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+    conn = sqlite3.connect("edunexa.db", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
     return conn
 
-try:
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute('''CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY, 
-                name TEXT, 
-                email TEXT UNIQUE, 
-                password TEXT
-            )''')
-            cur.execute('''CREATE TABLE IF NOT EXISTS datasets (
-                id SERIAL PRIMARY KEY,
-                email TEXT UNIQUE,
-                csv_data TEXT
-            )''')
-        conn.commit()
-except Exception as e:
-    print("Database init warning:", e)
+with get_db() as conn:
+    conn.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        name TEXT, 
+        email TEXT UNIQUE, 
+        password TEXT
+    )''')
+    conn.commit()
 
 def create_token(email: str, name: str):
     payload = {"email": email, "name": name, "exp": datetime.utcnow() + timedelta(days=1)}
@@ -103,21 +87,17 @@ class LoginReq(BaseModel):
 @app.post("/api/register")
 def register(req: RegisterReq):
     with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM users WHERE email=%s", (req.email,))
-            existing = cur.fetchone()
-            if existing: raise HTTPException(status_code=400, detail="Email already registered")
-            hashed = generate_password_hash(req.password)
-            cur.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (req.name, req.email, hashed))
+        existing = conn.execute("SELECT * FROM users WHERE email=?", (req.email,)).fetchone()
+        if existing: raise HTTPException(status_code=400, detail="Email already registered")
+        hashed = generate_password_hash(req.password)
+        conn.execute("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", (req.name, req.email, hashed))
         conn.commit()
     return {"message": "Registration successful"}
 
 @app.post("/api/login")
 def login(req: LoginReq):
     with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM users WHERE email=%s", (req.email,))
-            user = cur.fetchone()
+        user = conn.execute("SELECT * FROM users WHERE email=?", (req.email,)).fetchone()
         if not user or not check_password_hash(user["password"], req.password):
             raise HTTPException(status_code=401, detail="Invalid email or password")
         token = create_token(user["email"], user["name"])

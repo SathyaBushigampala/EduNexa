@@ -6,7 +6,6 @@ scipy
 statsmodels
 scikit-learn
 python-dotenv
-gunicorn
 PyJWT
 Werkzeug
 python-multipart
