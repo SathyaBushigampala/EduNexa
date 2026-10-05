@@ -321,14 +321,13 @@
 
         async function preloadData(force = false) {
             if (!cachedData || force) {
-                const [dataRes, descRes, probRes, hypRes, corrRes, regRes] = await Promise.all([
-                    fetchAuth('/data').then(r => r.json()),
-                    fetchAuth('/descriptive').then(r => r.json()),
-                    fetchAuth('/probability').then(r => r.json()),
-                    fetchAuth('/hypothesis-testing').then(r => r.json()),
-                    fetchAuth('/correlation').then(r => r.json()),
-                    fetchAuth('/regression').then(r => r.json())
-                ]);
+                const dataRes = await fetchAuth('/data').then(r => r.json());
+                const descRes = await fetchAuth('/descriptive').then(r => r.json());
+                const probRes = await fetchAuth('/probability').then(r => r.json());
+                const hypRes = await fetchAuth('/hypothesis-testing').then(r => r.json());
+                const corrRes = await fetchAuth('/correlation').then(r => r.json());
+                const regRes = await fetchAuth('/regression').then(r => r.json());
+                
                 cachedData = { raw: dataRes.data, desc: descRes, prob: probRes, hyp: hypRes, corr: corrRes, reg: regRes };
             }
             return cachedData;
