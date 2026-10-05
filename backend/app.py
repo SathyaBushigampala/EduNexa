@@ -33,13 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
-@app.get("/")
-def serve_index():
-    return FileResponse(os.path.join(frontend_path, "index.html"))
-
-app.mount("/static", StaticFiles(directory=frontend_path), name="static")
 
 @app.get("/health")
 def health_check():
