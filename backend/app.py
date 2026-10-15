@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import os
+import sqlite3
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -40,7 +41,7 @@ def health_check():
     return {"status": "ok"}
 
 # ----------------- AUTH & DB -----------------
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "edunexa-secure-jwt-dev-key-change-in-production")
 security = HTTPBearer()
 
 def get_db():
@@ -52,8 +53,9 @@ def get_db():
         conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
         return conn
     else:
-        # Use SQLite in /tmp (writable on Vercel)
-        sqlite_path = "/tmp/edunexa.db"
+        # Use SQLite in temp directory (cross-platform and writable on serverless / Vercel)
+        import tempfile
+        sqlite_path = os.path.join(tempfile.gettempdir(), "edunexa.db")
         conn = sqlite3.connect(sqlite_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         return conn

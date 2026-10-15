@@ -49,13 +49,18 @@ yarn-debug.log
 *.swo
 
 # Project Specific
+*.db
 edunexa.db
 backend/edunexa.db
+backend/*.db
+*.sqlite
 *.sqlite3
 
-# Temp files
+# Temp and user export files
 *.pdf
-dataset_demo_gmail_com.csv
+dataset_*.csv
+!dataset.csv
+!backend/dataset.csv
 
 .vercel
 .env*
